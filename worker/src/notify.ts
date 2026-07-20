@@ -51,14 +51,15 @@ export class NotifyOutbox {
   }
 
   serialize(): OutboxItem[] {
-    // Cap memory: keep last 200, prefer non-sent first then recent sent
-    const pending = this.items.filter(
-      (i) => i.status === "pending" || i.status === "failed",
+    // Cap memory: prefer undelivered (pending/failed/skipped) over sent
+    const open = this.items.filter(
+      (i) =>
+        i.status === "pending" ||
+        i.status === "failed" ||
+        i.status === "skipped_no_config",
     );
-    const rest = this.items
-      .filter((i) => i.status === "sent" || i.status === "skipped_no_config")
-      .slice(-100);
-    return [...pending, ...rest].slice(-200);
+    const sent = this.items.filter((i) => i.status === "sent").slice(-100);
+    return [...open, ...sent].slice(-200);
   }
 
   enqueue(args: {
@@ -120,6 +121,17 @@ export class NotifyOutbox {
     let retried = 0;
     const errors: string[] = [];
 
+    const hasSecrets = !!(this.telegramBotToken && this.telegramChatId);
+
+    // Same-drain: promote skipped → pending when secrets appear (review fix)
+    if (hasSecrets) {
+      for (const item of this.items) {
+        if (item.status === "skipped_no_config") {
+          item.status = "pending";
+        }
+      }
+    }
+
     for (const item of this.items) {
       if (item.status !== "pending" && item.status !== "failed") continue;
       if ((item.attempts ?? 0) >= MAX_ATTEMPTS) {
@@ -127,7 +139,7 @@ export class NotifyOutbox {
         continue;
       }
 
-      if (!this.telegramBotToken || !this.telegramChatId) {
+      if (!hasSecrets) {
         // Do NOT mark as sent — so configuring secrets later can still deliver
         if (item.status !== "skipped_no_config") {
           item.status = "skipped_no_config";
@@ -137,11 +149,6 @@ export class NotifyOutbox {
           stub += 1;
         }
         continue;
-      }
-
-      // Promote skipped → pending when secrets appear
-      if (item.status === "skipped_no_config") {
-        item.status = "pending";
       }
 
       item.attempts = (item.attempts ?? 0) + 1;
@@ -172,17 +179,6 @@ export class NotifyOutbox {
         item.status = "failed";
         item.last_error = e instanceof Error ? e.message : String(e);
         errors.push(item.last_error);
-      }
-    }
-
-    // Re-queue skipped_no_config when token becomes available next drain
-    for (const item of this.items) {
-      if (
-        item.status === "skipped_no_config" &&
-        this.telegramBotToken &&
-        this.telegramChatId
-      ) {
-        item.status = "pending";
       }
     }
 

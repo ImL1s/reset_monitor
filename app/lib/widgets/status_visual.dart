@@ -17,25 +17,25 @@ class StatusVisual {
     switch (status) {
       case 'active_confirmed':
         return StatusVisual(
-          label: 'Confirmed RESET',
+          label: 'Confirmed public RESET',
           color: RadarColors.accent,
           icon: Icons.check_circle_rounded,
         );
       case 'active_confirmed_degraded':
         return StatusVisual(
-          label: 'Confirmed · monitor lag',
+          label: 'Confirmed · feed delayed',
           color: const Color(0xFFA3E635),
           icon: Icons.warning_amber_rounded,
         );
       case 'detected_pending':
         return StatusVisual(
-          label: 'Pending review',
+          label: 'Detected · not confirmed',
           color: RadarColors.warning,
           icon: Icons.hourglass_top_rounded,
         );
       case 'no_recent_confirmed':
         return StatusVisual(
-          label: 'No recent confirmed',
+          label: 'No public RESET right now',
           color: RadarColors.muted,
           icon: Icons.remove_circle_outline_rounded,
         );
@@ -47,13 +47,13 @@ class StatusVisual {
         );
       case 'cold_start':
         return StatusVisual(
-          label: 'No confirmed yet',
+          label: 'No confirmed events yet',
           color: const Color(0xFF64748B),
           icon: Icons.ac_unit_rounded,
         );
       case 'not_monitored':
         return StatusVisual(
-          label: 'Not monitored',
+          label: 'Not covered',
           color: RadarColors.muted,
           icon: Icons.visibility_off_rounded,
         );

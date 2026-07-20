@@ -36,7 +36,7 @@ AI coding 時代，開發者同時訂閱多個工具（Codex / Claude / Grok / A
 |------|------|
 | **North Star** | 零登入用戶在 **10 秒內**正確回答：「現在哪家處於高信心 RESET（且仍在顯示期內）？」——「正確」必須可對照 published event + evidence |
 | 產品體驗 | 首屏**無登入牆**；狀態 + 上次時間 + 來源 + **資料截至時間** |
-| 訊號品質 | 綠燈必須 admin 核准（MVP）且有來源；**假綠燈 = 最高嚴重度事故**；撤回／更正有時限 |
+| 訊號品質 | 綠燈 = 嚴格模板（+ 可選 LLM）**自動確認**且有來源；**假綠燈 = 最高嚴重度事故**；admin 僅緊急撤回 |
 | 來源健康 | 來源逾 freshness SLA → 顯示 **來源中斷／未知**，**不得**顯示「平靜」 |
 | 覆蓋 | MVP：**Codex + Claude** 即時監測；其餘誠實 Unknown／規則說明 |
 | 通知 | **Confirmed** 事件走 **1 路 Free 通道**（MVP：Telegram）；High ≡ confirmed |

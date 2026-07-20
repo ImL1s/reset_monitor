@@ -1,6 +1,11 @@
 /**
  * Strict auto-green gate — closed templates from codex-resets history corpus.
  * Teaser fixtures must REJECT.
+ *
+ * Precision rules (2026-07-20 review):
+ * - Catchphrases never green alone (require usage phrase floor + scope).
+ * - Rules path requires usage phrase floor (same as LLM path).
+ * - Global/all-paid (or banked) scope signal required for hard_reset.
  */
 
 import type { EventCandidate, EventType, ProviderId } from "../types.js";
@@ -12,8 +17,14 @@ export type AutoGateResult = {
   title?: string;
 };
 
+/**
+ * Strong usage-reset templates.
+ * Catchphrases may appear here but alone still fail phrase floor / scope.
+ */
 const CODEX_STRONG = [
   "reset usage limits",
+  "reset of your usage",
+  "full reset of your usage",
   "usage limits have been reset",
   "usage limits will be fully reset",
   "resetting the usage limits",
@@ -26,6 +37,7 @@ const CODEX_STRONG = [
   "reset rate limits",
   "reseting rate limits",
   "resetting rate limits",
+  "resetting the limits",
   "rate limit reset",
   "rate limits reset",
   "banked reset",
@@ -33,11 +45,13 @@ const CODEX_STRONG = [
   "into the reset bank",
   "into your bank",
   "added a banked reset",
+  "another reset for our codex",
+  // Catchphrases: require floor+scope — alone cannot green
   "oops... i did it again",
   "oops… i did it again",
-  "another reset for our codex",
   "sneaky double reset",
   "reset button pressed",
+  "pressing the button",
   "we're resetting",
   "we are once again resetting",
   "we are resetting",
@@ -56,14 +70,11 @@ const CODEX_STRONG = [
   "have now reset usage limits",
   "have now been reset",
   "limits have now been reset",
-  "will be reseting rate limits",
-  "will be resetting rate limits",
   "are reseting the rate limit",
   "are resetting the rate limit",
   "have reset the rate limits",
   "we have reset the rate limits",
   "reset the rate limits",
-  "pressing the button",
   "team will reset rate limits",
   "to celebrate, we're resetting",
   "resetting rate limits so",
@@ -82,16 +93,25 @@ const INCOMING_ONLY = [
   "should be showing in your accounts in the next",
 ];
 
-/** Mid-strength phrases required before accepting LLM promote. */
+/** Required before rules or LLM promote (blocks catchphrase-only green). */
 export const USAGE_PHRASE_FLOOR = [
   "usage limit",
   "usage limits",
   "rate limit",
   "rate limits",
   "banked reset",
+  "reset bank",
+  "into the reset bank",
+  "into your bank",
   "reset usage",
+  "usage reset",
+  "your usage",
+  "reset of your",
   "limits have been reset",
   "limits reset",
+  "resetting the limits",
+  "everyone's limits",
+  "reset everyone's",
   "weekly limit",
   "5-hour",
   "5h",
@@ -121,6 +141,20 @@ function isNegation(text: string): boolean {
 export function hasUsagePhraseFloor(text: string): boolean {
   const lower = text.toLowerCase();
   return USAGE_PHRASE_FLOOR.some((p) => lower.includes(p));
+}
+
+/** Global/all-paid/banked scope — required for hard_reset promote (rules + LLM). */
+export function hasGlobalScopeSignal(text: string): boolean {
+  if (isBanked(text)) return true;
+  return /all paid|all plans|for everyone|all users|everyone|all accounts|across all|plus & pro|plus and pro|paid chat|paid plans|codex users|chatgpt work|all our|across plans|across codex|all plus|pro users|subscriptions|weekly usage|rate limits for|limits for all|limits across|limits again|limits in the process|in the process|you can keep building|keep building|hard reset|double reset|for all paid|all paid users|free usage|give free usage|global outage|we have reset|i have reset|we've reset|have reset usage|have reset rate|have reset the rate|usage limits for|usage limits in|resetting the limits/i.test(
+    text,
+  );
+}
+
+export function isBanked(text: string): boolean {
+  return /banked reset|credit one additional reset|into your bank|into the reset bank|added a banked reset/i.test(
+    text,
+  );
 }
 
 /** True when text only promises a future reset without completed past-tense. */
@@ -163,23 +197,13 @@ export function shouldAutoPublish(cand: EventCandidate): AutoGateResult {
       return { ok: false, reason: "no_strong_template" };
     }
 
-    const banked =
-      /banked reset|credit one additional reset|into your bank|into the reset bank|added a banked reset/i.test(
-        text,
-      );
-    const scopeOk =
-      banked ||
-      /all paid|all plans|for everyone|all users|everyone|all accounts|across all|plus & pro|plus and pro|paid chat|paid plans|codex users|chatgpt work|all our|across plans|across codex|all plus|pro users|subscriptions|weekly usage|rate limits for|limits for all|limits across|limits again|limits in the process|limits\. please|you can keep building/i.test(
-        text,
-      ) ||
-      /oops\.\.\. i did it again|oops… i did it again|sneaky double reset|reset button pressed|pressing the button|team will reset/i.test(
-        text,
-      ) ||
-      /another usage limit reset|usage limits have been reset|have reset usage limits|have reset rate limits|we have reset|i have reset|hard reset|double reset/i.test(
-        text,
-      );
+    // P0: catchphrase / strong alone never green without usage language
+    if (!hasUsagePhraseFloor(text)) {
+      return { ok: false, reason: "no_phrase_floor" };
+    }
 
-    if (!scopeOk) {
+    const banked = isBanked(text);
+    if (!banked && !hasGlobalScopeSignal(text)) {
       return { ok: false, reason: "no_scope_signal" };
     }
 
@@ -198,6 +222,9 @@ export function shouldAutoPublish(cand: EventCandidate): AutoGateResult {
     const strongHits = CLAUDE_STRONG.filter((p) => lower.includes(p));
     if (strongHits.length === 0) {
       return { ok: false, reason: "no_strong_template" };
+    }
+    if (!hasUsagePhraseFloor(text)) {
+      return { ok: false, reason: "no_phrase_floor" };
     }
     return {
       ok: true,

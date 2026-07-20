@@ -50,4 +50,27 @@ describe("computeProviderStats", () => {
     assert.equal(s.last_reset_at, null);
     assert.equal(s.days_since_last, null);
   });
+
+  it("uses effective_at not verified_at for intervals", () => {
+    const now = new Date("2026-07-20T12:00:00.000Z");
+    // Seed re-import: verified_at collapsed same day; effective_at preserves history
+    const events: PublishedEvent[] = [
+      {
+        ...ev("old", "2026-07-20T08:00:00.000Z"),
+        effective_at: "2026-07-01T00:00:00.000Z",
+      },
+      {
+        ...ev("mid", "2026-07-20T08:01:00.000Z"),
+        effective_at: "2026-07-10T00:00:00.000Z",
+      },
+      {
+        ...ev("new", "2026-07-20T08:02:00.000Z"),
+        effective_at: "2026-07-18T00:00:00.000Z",
+      },
+    ];
+    const s = computeProviderStats(events, now);
+    assert.equal(s.last_reset_at, "2026-07-18T00:00:00.000Z");
+    assert.ok(s.avg_interval_days! >= 8);
+    assert.ok(s.days_since_last! >= 2);
+  });
 });

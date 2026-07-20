@@ -3,7 +3,9 @@ import { fetchFxTimeline } from "../sources/fxtwitter.js";
 import { fetchDayclawItems } from "../sources/dayclaw.js";
 import type { FetchedPost } from "../sources/types.js";
 import {
+  hasGlobalScopeSignal,
   hasUsagePhraseFloor,
+  isBanked,
   shouldAutoPublish,
 } from "./auto_publish.js";
 import { llmJudgePromote } from "./llm_gate.js";
@@ -11,6 +13,13 @@ import { isInfraFailureReason } from "./opencode_zen_gate.js";
 import { notifyOutbox } from "../notify.js";
 import type { ProviderId } from "../types.js";
 import { nowIso } from "../status.js";
+
+/** Content fails that can still promote after LLM becomes available. */
+const AWAITING_LLM_REASONS = new Set([
+  "no_strong_template",
+  "no_scope_signal",
+  "no_phrase_floor",
+]);
 
 export type MonitoredAccount = {
   handle: string;
@@ -139,15 +148,26 @@ async function tryPromoteCandidate(
     if (j.ok) {
       // Phrase floor: LLM cannot invent green without usage-limit language
       if (!hasUsagePhraseFloor(cand.raw_text)) {
+        // Hard reject — same text will never grow a floor; avoid infinite LLM burn
         gate = { ok: false, reason: "llm_no_phrase_floor" };
+      } else if (
+        j.type !== "banked_credit" &&
+        !isBanked(cand.raw_text) &&
+        !hasGlobalScopeSignal(cand.raw_text)
+      ) {
+        // Deterministic scope second gate (P1): no pure "rate limit / 5h" narrative
+        gate = { ok: false, reason: "llm_no_scope_signal" };
       } else {
         const via = j.via ? `:${j.via}` : "";
+        const type = j.type === "banked_credit" || isBanked(cand.raw_text)
+          ? "banked_credit"
+          : j.type;
         gate = {
           ok: true,
           reason: j.reason,
-          type: j.type,
+          type,
           title:
-            j.type === "banked_credit"
+            type === "banked_credit"
               ? `Banked reset (llm${via})`
               : `Hard reset (llm${via})`,
         };
@@ -176,18 +196,17 @@ async function tryPromoteCandidate(
     return { kind: "promoted", eventId: ev.id };
   }
 
-  // Soft: keep pending so next cycle can retry
-  if (
-    isSoftRejectReason(gate.reason) ||
-    isInfraFailureReason(gate.reason) ||
-    gate.reason === "llm_no_phrase_floor"
-  ) {
+  // Soft: infra / transport only — keep pending so next cycle can retry
+  if (isSoftRejectReason(gate.reason) || isInfraFailureReason(gate.reason)) {
     return { kind: "soft_pending", reason: gate.reason };
   }
 
-  // scheduled_incoming stays pending (may become past-tense later? same text won't)
-  // Treat as hard content reject so it doesn't spam LLM forever — actually same post text won't change.
-  // Keep as hard reject for scheduled_incoming.
+  // No LLM configured yet: hold weak matches for later LLM / template expansion
+  if (!llmToken && AWAITING_LLM_REASONS.has(gate.reason)) {
+    return { kind: "soft_pending", reason: "llm_unavailable" };
+  }
+
+  // Content rejects (including llm_no_phrase_floor / llm_no_scope_signal) are permanent
   store.reject(cand.id, gate.reason);
   return { kind: "hard_reject", reason: gate.reason };
 }

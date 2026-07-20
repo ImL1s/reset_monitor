@@ -9,6 +9,17 @@ class StatsHeader extends StatelessWidget {
   final ProviderStats stats;
   final Map<String, dynamic>? monitor;
 
+  String _autoLine() {
+    if (monitor == null) return '';
+    final auto = monitor!['auto_publish'] == true;
+    final source = monitor!['source']?.toString() ?? '—';
+    final mode = monitor!['mode']?.toString() ?? '';
+    final on = mode == 'free_auto' || auto;
+    return 'Auto monitoring: ${on ? "ON" : "OFF"} · every ~10 min · '
+        'rules first, optional LLM · auto-publish: ${auto ? "ON" : "OFF"} · '
+        'source $source';
+  }
+
   @override
   Widget build(BuildContext context) {
     final chips = <(IconData, String, Color)>[
@@ -82,8 +93,7 @@ class StatsHeader extends StatelessWidget {
         if (monitor != null) ...[
           const SizedBox(height: 12),
           Text(
-            'Auto: ${monitor!['mode']} · source ${monitor!['source']} · '
-            'publish ${monitor!['auto_publish'] == true ? "on" : "off"}',
+            _autoLine(),
             style: Theme.of(context).textTheme.labelSmall,
           ),
         ],

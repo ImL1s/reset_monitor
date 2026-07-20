@@ -237,8 +237,9 @@ class _ProviderStatusCardState extends State<ProviderStatusCard> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                data.pendingDetection!.message,
-                                maxLines: 2,
+                                'Not confirmed yet — do not treat as a RESET. '
+                                '${data.pendingDetection!.message}',
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
                                   color: RadarColors.warning,

@@ -113,12 +113,16 @@ class BoardPageState extends State<BoardPage> {
                     ),
                   ),
                 SliverPadding(
+                  padding: EdgeInsets.fromLTRB(pad, 4, pad, 8),
+                  sliver: const SliverToBoxAdapter(child: _StatusLegend()),
+                ),
+                SliverPadding(
                   padding: EdgeInsets.fromLTRB(pad, 8, pad, 8),
                   sliver: SliverToBoxAdapter(
                     child: Row(
                       children: [
                         Text(
-                          'Live monitors',
+                          'Watched providers',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(width: 8),
@@ -152,7 +156,7 @@ class BoardPageState extends State<BoardPage> {
                     padding: EdgeInsets.fromLTRB(pad, 28, pad, 8),
                     sliver: SliverToBoxAdapter(
                       child: Text(
-                        'Coverage (no public hard-reset signal)',
+                        'Not covered (no public hard-reset feed)',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ),
@@ -176,10 +180,6 @@ class BoardPageState extends State<BoardPage> {
                     ),
                   ),
                 ],
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(pad, 8, pad, 16),
-                  sliver: const SliverToBoxAdapter(child: _StatusLegend()),
-                ),
                 SliverPadding(
                   padding: EdgeInsets.fromLTRB(pad, 0, pad, 40),
                   sliver: const SliverToBoxAdapter(child: _FooterNote()),
@@ -259,12 +259,14 @@ class _HeroHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Public RESET board',
+                      'Is there a public usage RESET?',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Zero login · Global / staff announcements only',
+                      'Fully automatic scan of staff/public posts. '
+                      'Green = confirmed. Amber = detected, not confirmed yet. '
+                      'Not your personal quota.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
@@ -279,28 +281,23 @@ class _HeroHeader extends StatelessWidget {
             children: [
               _StatChip(
                 icon: Icons.bolt_rounded,
-                label: '$confirmed active confirmed',
+                label: '$confirmed confirmed now',
                 color: RadarColors.accent,
               ),
               _StatChip(
                 icon: Icons.hourglass_top_rounded,
-                label: '$pending pending',
+                label: '$pending awaiting confirm (not green)',
                 color: RadarColors.warning,
               ),
               _StatChip(
                 icon: Icons.sensors_rounded,
-                label: '$monitored monitored',
+                label: '$monitored sources watched',
                 color: RadarColors.info,
-              ),
-              _StatChip(
-                icon: Icons.public_rounded,
-                label: 'schema ${snapshot?.schemaVersion ?? "—"}',
-                color: RadarColors.muted,
               ),
               if (snapshot != null)
                 _StatChip(
                   icon: Icons.update_rounded,
-                  label: 'gen ${formatRadarTime(snapshot!.generatedAt)}',
+                  label: 'as of ${formatRadarTime(snapshot!.generatedAt)}',
                   color: RadarColors.muted,
                 ),
             ],
@@ -383,9 +380,16 @@ class _StatusLegend extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Status legend',
+            'How to read status',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: RadarColors.text,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Green = confirmed public RESET. Amber = not a green light — do not treat as a reset.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: RadarColors.muted,
                 ),
           ),
           const SizedBox(height: 12),

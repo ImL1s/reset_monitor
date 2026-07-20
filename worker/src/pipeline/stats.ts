@@ -10,14 +10,14 @@ export function computeProviderStats(
   now: Date = new Date(),
   provider: ProviderId | "all" = "all",
 ): ProviderStatsDto {
+  const eventTime = (e: PublishedEvent) =>
+    new Date(e.effective_at || e.verified_at).getTime();
+
   const list = events
     .filter((e) => !e.retracted_at)
     .filter((e) => (provider === "all" ? true : e.provider === provider))
     .slice()
-    .sort(
-      (a, b) =>
-        new Date(a.verified_at).getTime() - new Date(b.verified_at).getTime(),
-    );
+    .sort((a, b) => eventTime(a) - eventTime(b));
 
   if (list.length === 0) {
     return {
@@ -32,7 +32,9 @@ export function computeProviderStats(
     };
   }
 
-  const times = list.map((e) => new Date(e.verified_at));
+  // Prefer effective_at (announcement time) over verified_at (import/confirm time)
+  // so seed/re-import batches do not collapse drought/avg to ~0.
+  const times = list.map((e) => new Date(e.effective_at || e.verified_at));
   const last = times[times.length - 1]!;
   const intervals: number[] = [];
   for (let i = 1; i < times.length; i++) {

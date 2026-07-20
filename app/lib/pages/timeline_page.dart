@@ -66,12 +66,13 @@ class TimelinePageState extends State<TimelinePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Event timeline',
+                    'Confirmed timeline',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Confirmed public resets · last 90 days',
+                    'Only auto-confirmed public resets (last 90 days). '
+                    'Pending detections stay on the Board — they never appear here.',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                   if (data != null)
@@ -139,7 +140,9 @@ class TimelinePageState extends State<TimelinePage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Auto-confirmed public resets (strict rules + optional LLM) will appear here.',
+                      'When rules (or optional LLM) auto-confirm a public post, it shows up here. '
+                      'Amber “detected, not confirmed” items stay on the Board only.',
+                      textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],

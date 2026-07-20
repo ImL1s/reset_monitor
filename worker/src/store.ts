@@ -380,6 +380,7 @@ export function isSoftRejectReason(reason: string): boolean {
   return (
     reason.startsWith("opencode_http_") ||
     reason.startsWith("opencode_network") ||
+    reason.startsWith("llm_http_") ||
     reason.startsWith("llm_parse:") ||
     reason.startsWith("free_fail:") ||
     reason.includes("opencode_http_") ||

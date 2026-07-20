@@ -52,6 +52,37 @@ describe("hardening: incoming + phrase floor", () => {
     assert.equal(r.ok, true);
   });
 
+  it("catchphrase alone does not green", () => {
+    for (const text of [
+      "Oops... I did it again.",
+      "Thanks for pressing the button today.",
+      "Sneaky double reset 😉",
+      "Reset button pressed.",
+    ]) {
+      const r = shouldAutoPublish(pending(text));
+      assert.equal(r.ok, false, text);
+      assert.equal(r.reason, "no_phrase_floor", `${text} → ${r.reason}`);
+    }
+  });
+
+  it("strong template without usage floor does not green", () => {
+    const r = shouldAutoPublish(
+      pending("We have reset the servers for everyone. Keep building."),
+    );
+    // "we have reset" is strong but no usage/rate-limit floor
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "no_phrase_floor");
+  });
+
+  it("full usage reset of your limits still greens", () => {
+    const r = shouldAutoPublish(
+      pending(
+        "Enjoy a full reset of your usage limits for ChatGPT Work and Codex.",
+      ),
+    );
+    assert.equal(r.ok, true);
+  });
+
   it("usage phrase floor", () => {
     assert.equal(hasUsagePhraseFloor("hello world"), false);
     assert.equal(hasUsagePhraseFloor("reset usage limits for all"), true);
@@ -128,5 +159,25 @@ describe("hardening: notify outbox", () => {
     box.enqueue({ event_id: "e3", kind: "confirmed", payload: "x" });
     const ser = box.serialize();
     assert.ok(ser.some((i) => i.event_id === "e3"));
+  });
+
+  it("single drain delivers after secrets appear", async () => {
+    const calls: string[] = [];
+    const box = new NotifyOutbox();
+    box.enqueue({ event_id: "e_late", kind: "confirmed", payload: "late" });
+    await box.drain();
+    assert.equal(box.list()[0]!.status, "skipped_no_config");
+    box.configure({
+      botToken: "tok",
+      chatId: "-1",
+      fetchImpl: async (input) => {
+        calls.push(String(input));
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+    const r = await box.drain();
+    assert.equal(r.sent, 1);
+    assert.equal(box.list()[0]!.status, "sent");
+    assert.equal(calls.length, 1);
   });
 });

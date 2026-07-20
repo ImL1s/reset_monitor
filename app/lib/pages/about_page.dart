@@ -81,13 +81,13 @@ class AboutPage extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         Text(
-          'Devices',
+          'How to read the board',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
         Text(
-          'Phone & mobile web: bottom navigation · Tablet: navigation rail · '
-          'Desktop web: extended rail + 3-column bento (max content 1200px).',
+          'Green = confirmed public RESET. Amber = detected, not confirmed — do not treat as a reset. '
+          'Timeline only lists confirmed events; pending detections stay on the Board.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const SizedBox(height: 40),
@@ -101,19 +101,22 @@ class AboutPage extends StatelessWidget {
         icon: Icons.shield_outlined,
         title: 'What “RESET” means',
         body:
-            'A confirmed global / staff announcement that many paid users received a usage replenishment — not your personal 5-hour window.',
+            'A confirmed public/staff announcement that many paid users got usage replenished. '
+            'Not your personal 5-hour window. Green light ≠ your account is full.',
+      ),
+      _FeatureCard(
+        icon: Icons.auto_mode_rounded,
+        title: 'How we decide (fully automatic)',
+        body:
+            'We poll public posts on a schedule. Strict text rules can auto-confirm a green light; '
+            'if unsure, an optional LLM gate may help; weak teasers stay “detected, not confirmed”. '
+            'Humans only intervene for emergency retract.',
       ),
       _FeatureCard(
         icon: Icons.lock_open_rounded,
         title: 'Zero login',
         body:
-            'The board reads a public API only. Admin confirmation happens out-of-band so green lights stay auditable.',
-      ),
-      _FeatureCard(
-        icon: Icons.devices_rounded,
-        title: 'Responsive',
-        body:
-            'Layouts adapt for phone, tablet, desktop web, and mobile web with touch-first targets (≥44px).',
+            'This board only reads a public API. We never access your AI accounts.',
       ),
     ];
   }
