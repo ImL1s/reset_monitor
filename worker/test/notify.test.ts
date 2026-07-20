@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { NotifyOutbox } from "../src/notify.js";
 
 describe("NotifyOutbox", () => {
-  it("dedupes sent confirmed", async () => {
+  it("dedupes after stub skip for confirmed", async () => {
     const box = new NotifyOutbox();
     const a = box.enqueue({
       event_id: "e1",
@@ -12,6 +12,7 @@ describe("NotifyOutbox", () => {
     });
     assert.ok(a);
     await box.drain();
+    assert.equal(a!.status, "skipped_no_config");
     const b = box.enqueue({
       event_id: "e1",
       kind: "confirmed",
@@ -20,7 +21,7 @@ describe("NotifyOutbox", () => {
     assert.equal(b, null);
   });
 
-  it("allows retract after confirmed", async () => {
+  it("allows retract after confirmed stub", async () => {
     const box = new NotifyOutbox();
     box.enqueue({ event_id: "e2", kind: "confirmed", payload: "ok" });
     await box.drain();
@@ -33,7 +34,7 @@ describe("NotifyOutbox", () => {
     assert.ok(r);
     assert.equal(r.kind, "retract");
     await box.drain();
-    assert.equal(r.status, "sent");
+    assert.equal(r.status, "skipped_no_config");
   });
 
   it("sends telegram when configured", async () => {

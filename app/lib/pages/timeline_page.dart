@@ -139,7 +139,7 @@ class TimelinePageState extends State<TimelinePage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Admin-confirmed public resets will appear here.',
+                      'Auto-confirmed public resets (strict rules + optional LLM) will appear here.',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],

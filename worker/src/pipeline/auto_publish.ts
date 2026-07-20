@@ -40,10 +40,12 @@ const CODEX_STRONG = [
   "reset button pressed",
   "we're resetting",
   "we are once again resetting",
+  "we are resetting",
   "reset the usage limits for all",
   "reset everyone's limits",
   "reset everyone's codex",
   "usage reset on the house",
+  "usage limit reset",
   "resetting the usage limits for all",
   "i have allowed codex to reset",
   "allowed codex to reset its own",
@@ -54,12 +56,45 @@ const CODEX_STRONG = [
   "have now reset usage limits",
   "have now been reset",
   "limits have now been reset",
-  "reset button pressed",
   "will be reseting rate limits",
   "will be resetting rate limits",
-  "rate limit reset incoming",
-  "reset incoming",
+  "are reseting the rate limit",
+  "are resetting the rate limit",
+  "have reset the rate limits",
+  "we have reset the rate limits",
+  "reset the rate limits",
   "pressing the button",
+  "team will reset rate limits",
+  "to celebrate, we're resetting",
+  "resetting rate limits so",
+  "another usage limit reset",
+];
+
+/** Future-only phrasing without clear completed reset — no immediate green. */
+const INCOMING_ONLY = [
+  "reset incoming",
+  "rate limit reset incoming",
+  "will be reseting rate limits",
+  "will be resetting rate limits",
+  "will reset rate limits",
+  "will reset usage",
+  "resetting tomorrow",
+  "should be showing in your accounts in the next",
+];
+
+/** Mid-strength phrases required before accepting LLM promote. */
+export const USAGE_PHRASE_FLOOR = [
+  "usage limit",
+  "usage limits",
+  "rate limit",
+  "rate limits",
+  "banked reset",
+  "reset usage",
+  "limits have been reset",
+  "limits reset",
+  "weekly limit",
+  "5-hour",
+  "5h",
 ];
 
 const CLAUDE_STRONG = [
@@ -83,6 +118,23 @@ function isNegation(text: string): boolean {
   );
 }
 
+export function hasUsagePhraseFloor(text: string): boolean {
+  const lower = text.toLowerCase();
+  return USAGE_PHRASE_FLOOR.some((p) => lower.includes(p));
+}
+
+/** True when text only promises a future reset without completed past-tense. */
+export function isScheduledIncomingOnly(text: string): boolean {
+  const lower = text.toLowerCase();
+  const hasIncoming = INCOMING_ONLY.some((p) => lower.includes(p));
+  if (!hasIncoming) return false;
+  const pastDone =
+    /have reset|has reset|i have reset|we have reset|we've reset|limits have been reset|i did it again|sneaky double reset|added a banked reset|reset usage limits for all|are resetting the usage|we are once again resetting|another usage limit reset for/i.test(
+      text,
+    );
+  return !pastDone;
+}
+
 /**
  * Decide whether a pending candidate may become a confirmed green event
  * without a human.
@@ -101,6 +153,9 @@ export function shouldAutoPublish(cand: EventCandidate): AutoGateResult {
   if (isNegation(text)) {
     return { ok: false, reason: "negation" };
   }
+  if (isScheduledIncomingOnly(text)) {
+    return { ok: false, reason: "scheduled_incoming" };
+  }
 
   if (cand.provider === "codex") {
     const strongHits = CODEX_STRONG.filter((p) => lower.includes(p));
@@ -112,16 +167,14 @@ export function shouldAutoPublish(cand: EventCandidate): AutoGateResult {
       /banked reset|credit one additional reset|into your bank|into the reset bank|added a banked reset/i.test(
         text,
       );
-    // Historical Tibo posts often omit "all paid" but still mean global codex reset.
     const scopeOk =
       banked ||
       /all paid|all plans|for everyone|all users|everyone|all accounts|across all|plus & pro|plus and pro|paid chat|paid plans|codex users|chatgpt work|all our|across plans|across codex|all plus|pro users|subscriptions|weekly usage|rate limits for|limits for all|limits across|limits again|limits in the process|limits\. please|you can keep building/i.test(
         text,
       ) ||
-      /oops\.\.\. i did it again|oops… i did it again|sneaky double reset|reset button pressed|pressing the button|reset incoming|team will reset/i.test(
+      /oops\.\.\. i did it again|oops… i did it again|sneaky double reset|reset button pressed|pressing the button|team will reset/i.test(
         text,
       ) ||
-      // Strong global wording already implies codex-wide blessing
       /another usage limit reset|usage limits have been reset|have reset usage limits|have reset rate limits|we have reset|i have reset|hard reset|double reset/i.test(
         text,
       );

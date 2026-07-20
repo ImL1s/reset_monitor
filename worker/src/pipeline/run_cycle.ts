@@ -1,9 +1,13 @@
-import { store } from "../store.js";
+import { isSoftRejectReason, store } from "../store.js";
 import { fetchFxTimeline } from "../sources/fxtwitter.js";
 import { fetchDayclawItems } from "../sources/dayclaw.js";
 import type { FetchedPost } from "../sources/types.js";
-import { shouldAutoPublish } from "./auto_publish.js";
+import {
+  hasUsagePhraseFloor,
+  shouldAutoPublish,
+} from "./auto_publish.js";
 import { llmJudgePromote } from "./llm_gate.js";
+import { isInfraFailureReason } from "./opencode_zen_gate.js";
 import { notifyOutbox } from "../notify.js";
 import type { ProviderId } from "../types.js";
 import { nowIso } from "../status.js";
@@ -37,6 +41,7 @@ export type CycleAccountReport = {
   duplicates: number;
   promoted: number;
   rejected: number;
+  soft_pending: number;
   error?: string;
 };
 
@@ -88,6 +93,105 @@ async function fetchAccountPosts(
   throw new Error(errors.join("|") || "all_sources_failed");
 }
 
+async function tryPromoteCandidate(
+  candId: string,
+  autoPublish: boolean,
+  fetchImpl: typeof fetch | undefined,
+  g: {
+    LLM_GATE_URL?: string;
+    LLM_GATE_TOKEN?: string;
+    LLM_GATE_MODE?: string;
+    OPENCODE_GO_API_KEY?: string;
+    OPENCODE_ZEN_API_KEY?: string;
+    OPENCODE_ZEN_MODEL?: string;
+    OPENCODE_ZEN_BASE?: string;
+  },
+): Promise<
+  | { kind: "promoted"; eventId: string }
+  | { kind: "hard_reject"; reason: string }
+  | { kind: "soft_pending"; reason: string }
+  | { kind: "skip" }
+> {
+  const cand = store.candidates.get(candId);
+  if (!cand || cand.status !== "pending_review" || !autoPublish) {
+    return { kind: "skip" };
+  }
+
+  let gate = shouldAutoPublish(cand);
+  let decisionBy = "auto_rules";
+
+  const llmToken =
+    g.OPENCODE_GO_API_KEY || g.OPENCODE_ZEN_API_KEY || g.LLM_GATE_TOKEN;
+
+  if (!gate.ok && llmToken) {
+    const j = await llmJudgePromote(cand, {
+      url: g.LLM_GATE_URL,
+      token: llmToken,
+      mode: g.LLM_GATE_MODE ?? "opencode_free_then_go",
+      model: g.OPENCODE_ZEN_MODEL ?? "deepseek-v4-flash",
+      baseUrl: g.OPENCODE_ZEN_BASE ?? "https://opencode.ai/zen/go/v1",
+      freeModel: "deepseek-v4-flash-free",
+      goModel: "deepseek-v4-flash",
+      freeBase: "https://opencode.ai/zen/v1",
+      goBase: "https://opencode.ai/zen/go/v1",
+      fetchImpl,
+    });
+    if (j.ok) {
+      // Phrase floor: LLM cannot invent green without usage-limit language
+      if (!hasUsagePhraseFloor(cand.raw_text)) {
+        gate = { ok: false, reason: "llm_no_phrase_floor" };
+      } else {
+        const via = j.via ? `:${j.via}` : "";
+        gate = {
+          ok: true,
+          reason: j.reason,
+          type: j.type,
+          title:
+            j.type === "banked_credit"
+              ? `Banked reset (llm${via})`
+              : `Hard reset (llm${via})`,
+        };
+        decisionBy = "auto_rules_llm";
+      }
+    } else if (isInfraFailureReason(j.reason) || isSoftRejectReason(j.reason)) {
+      return { kind: "soft_pending", reason: j.reason };
+    } else {
+      gate = { ok: false, reason: j.reason };
+    }
+  }
+
+  if (gate.ok) {
+    const ev = store.confirm(cand.id, {
+      type: gate.type,
+      title: gate.title,
+      decision_by: decisionBy,
+      decision_reason: gate.reason,
+      body_excerpt: cand.raw_text.slice(0, 280),
+    });
+    notifyOutbox.enqueue({
+      event_id: ev.id,
+      kind: "confirmed",
+      payload: `✅ ${ev.provider} ${ev.type}: ${ev.title}\n${ev.source_url}`,
+    });
+    return { kind: "promoted", eventId: ev.id };
+  }
+
+  // Soft: keep pending so next cycle can retry
+  if (
+    isSoftRejectReason(gate.reason) ||
+    isInfraFailureReason(gate.reason) ||
+    gate.reason === "llm_no_phrase_floor"
+  ) {
+    return { kind: "soft_pending", reason: gate.reason };
+  }
+
+  // scheduled_incoming stays pending (may become past-tense later? same text won't)
+  // Treat as hard content reject so it doesn't spam LLM forever — actually same post text won't change.
+  // Keep as hard reject for scheduled_incoming.
+  store.reject(cand.id, gate.reason);
+  return { kind: "hard_reject", reason: gate.reason };
+}
+
 /**
  * Full free-auto cycle: multi-source timeline → ingest → strict auto-publish.
  */
@@ -125,6 +229,7 @@ export async function runAutoCycle(
       duplicates: 0,
       promoted: 0,
       rejected: 0,
+      soft_pending: 0,
     };
 
     try {
@@ -155,76 +260,42 @@ export async function runAutoCycle(
             is_retweet: post.isRetweet,
           });
 
+          let cand = result.candidate;
+
           if (result.duplicate) {
             ar.duplicates += 1;
-            continue;
+            // Re-open soft rejects so recovered infra can green true positives
+            if (cand.status === "rejected") {
+              const reopened = store.requeueSoftRejected(cand.id);
+              if (reopened) cand = reopened;
+              else continue;
+            } else if (cand.status === "pending_review") {
+              // fall through to re-judge
+            } else {
+              continue;
+            }
+          } else {
+            ar.ingested_new += 1;
           }
-          ar.ingested_new += 1;
 
-          const cand = result.candidate;
           if (cand.status === "rejected") {
             ar.rejected += 1;
             continue;
           }
 
-          if (cand.status === "pending_review" && autoPublish) {
-            let gate = shouldAutoPublish(cand);
-            let decisionBy = "auto_rules";
-
-            const llmToken =
-              g.OPENCODE_GO_API_KEY ||
-              g.OPENCODE_ZEN_API_KEY ||
-              g.LLM_GATE_TOKEN;
-            // LLM second look: free Zen first, Go only if free infra dies
-            if (!gate.ok && llmToken && cand.status === "pending_review") {
-              const j = await llmJudgePromote(cand, {
-                url: g.LLM_GATE_URL,
-                token: llmToken,
-                mode: g.LLM_GATE_MODE ?? "opencode_free_then_go",
-                model: g.OPENCODE_ZEN_MODEL ?? "deepseek-v4-flash",
-                baseUrl: g.OPENCODE_ZEN_BASE ?? "https://opencode.ai/zen/go/v1",
-                freeModel: "deepseek-v4-flash-free",
-                goModel: "deepseek-v4-flash",
-                freeBase: "https://opencode.ai/zen/v1",
-                goBase: "https://opencode.ai/zen/go/v1",
-                fetchImpl: opts.fetchImpl,
-              });
-              if (j.ok) {
-                const via = j.via ? `:${j.via}` : "";
-                gate = {
-                  ok: true,
-                  reason: j.reason,
-                  type: j.type,
-                  title:
-                    j.type === "banked_credit"
-                      ? `Banked reset (llm${via})`
-                      : `Hard reset (llm${via})`,
-                };
-                decisionBy = "auto_rules_llm";
-              } else {
-                gate = { ok: false, reason: j.reason };
-              }
-            }
-
-            if (gate.ok) {
-              const ev = store.confirm(cand.id, {
-                type: gate.type,
-                title: gate.title,
-                decision_by: decisionBy,
-                decision_reason: gate.reason,
-                body_excerpt: cand.raw_text.slice(0, 280),
-              });
-              ar.promoted += 1;
-              report.promoted_event_ids.push(ev.id);
-              notifyOutbox.enqueue({
-                event_id: ev.id,
-                kind: "confirmed",
-                payload: `✅ ${ev.provider} ${ev.type}: ${ev.title}\n${ev.source_url}`,
-              });
-            } else {
-              store.reject(cand.id, gate.reason);
-              ar.rejected += 1;
-            }
+          const outcome = await tryPromoteCandidate(
+            cand.id,
+            autoPublish,
+            opts.fetchImpl,
+            g,
+          );
+          if (outcome.kind === "promoted") {
+            ar.promoted += 1;
+            report.promoted_event_ids.push(outcome.eventId);
+          } else if (outcome.kind === "hard_reject") {
+            ar.rejected += 1;
+          } else if (outcome.kind === "soft_pending") {
+            ar.soft_pending += 1;
           }
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);

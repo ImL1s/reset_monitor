@@ -76,9 +76,12 @@ export async function opencodeZenJudge(
   const fetchImpl = opts.fetchImpl ?? fetch;
   const base = (opts.baseUrl ?? OPENCODE_GO_BASE).replace(/\/$/, "");
   const model = opts.model ?? OPENCODE_GO_MODEL;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25_000);
   try {
     const res = await fetchImpl(`${base}/chat/completions`, {
       method: "POST",
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${opts.apiKey}`,
         "Content-Type": "application/json",
@@ -134,11 +137,17 @@ export async function opencodeZenJudge(
       };
     }
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const reason = msg.includes("abort")
+      ? `opencode_network:Timeout`
+      : `opencode_network:${msg}`;
     return {
       ok: false,
-      reason: `opencode_network:${e instanceof Error ? e.message : String(e)}`,
+      reason,
       via: opts.via ?? "single",
     };
+  } finally {
+    clearTimeout(timer);
   }
 }
 

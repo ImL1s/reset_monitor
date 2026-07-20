@@ -1,5 +1,12 @@
 import { MemoryStore } from "./store.js";
-import type { EventCandidate, PublishedEvent, RawSource, ProviderId, ProviderRuntimeMeta } from "./types.js";
+import { notifyOutbox, type OutboxItem } from "./notify.js";
+import type {
+  EventCandidate,
+  PublishedEvent,
+  RawSource,
+  ProviderId,
+  ProviderRuntimeMeta,
+} from "./types.js";
 
 export interface StoreSnapshot {
   version: 1;
@@ -8,6 +15,7 @@ export interface StoreSnapshot {
   events: PublishedEvent[];
   meta: Record<string, ProviderRuntimeMeta>;
   last_pipeline_report?: unknown;
+  notify_outbox?: OutboxItem[];
 }
 
 export function serializeStore(store: MemoryStore): StoreSnapshot {
@@ -22,6 +30,7 @@ export function serializeStore(store: MemoryStore): StoreSnapshot {
     events: [...store.events.values()],
     meta,
     last_pipeline_report: store.lastPipelineReport ?? null,
+    notify_outbox: notifyOutbox.serialize(),
   };
 }
 
@@ -36,6 +45,7 @@ export function hydrateStore(store: MemoryStore, snap: StoreSnapshot): void {
     store.meta.set(k as ProviderId, v);
   }
   store.lastPipelineReport = snap.last_pipeline_report ?? null;
+  notifyOutbox.hydrate(snap.notify_outbox ?? []);
 }
 
 export async function loadStoreFromKv(

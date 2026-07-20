@@ -323,17 +323,29 @@ export function createApp() {
 
   /** Public: monitoring mode (no secrets). */
   app.get("/v1/monitor", (c) => {
+    const last = store.lastPipelineReport as {
+      ran_at?: string;
+      source?: string;
+      accounts?: Array<{ source?: string; ok?: boolean }>;
+    } | null;
+    const sources = (last?.accounts ?? [])
+      .map((a) => a.source)
+      .filter(Boolean);
+    const sourceSummary =
+      sources.length > 0
+        ? [...new Set(sources)].join("+")
+        : last?.source ?? "multi";
     return c.json({
       mode: "free_auto",
-      source: "fxtwitter_v2",
+      source: sourceSummary,
       auto_publish: envFlag("AUTO_PUBLISH", "1") === "1",
       monitoring_enabled: envFlag("MONITORING_ENABLED", "1") === "1",
-      last_run: store.lastPipelineReport
+      llm_gate_mode: envFlag("LLM_GATE_MODE", "opencode_free_then_go"),
+      last_run: last
         ? {
-            ran_at: (store.lastPipelineReport as { ran_at?: string }).ran_at,
-            accounts: (
-              store.lastPipelineReport as { accounts?: unknown[] }
-            ).accounts,
+            ran_at: last.ran_at,
+            source: last.source,
+            accounts: last.accounts,
           }
         : null,
     });

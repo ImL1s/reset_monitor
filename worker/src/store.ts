@@ -344,6 +344,26 @@ export class MemoryStore {
     return cand;
   }
 
+  /** Re-open soft-rejected candidates so a later poll can re-judge (infra recover). */
+  requeueSoftRejected(candidateId: string): EventCandidate | null {
+    const cand = this.candidates.get(candidateId);
+    if (!cand || cand.status !== "rejected") return null;
+    const reason = cand.reject_reason ?? "";
+    if (!isSoftRejectReason(reason)) return null;
+    cand.status = "pending_review";
+    cand.reject_reason = null;
+    cand.updated_at = nowIso();
+    this.candidates.set(cand.id, cand);
+    return cand;
+  }
+
+  findCandidateByPostId(postId: string): EventCandidate | null {
+    for (const c of this.candidates.values()) {
+      if (c.post_id === postId) return c;
+    }
+    return null;
+  }
+
   retract(eventId: string, reason: string, by = "admin@local"): PublishedEvent {
     const ev = this.events.get(eventId);
     if (!ev) throw new Error("event_not_found");
@@ -353,6 +373,19 @@ export class MemoryStore {
     this.events.set(ev.id, ev);
     return ev;
   }
+}
+
+/** Soft rejects may be re-opened; hard content rejects stay dead. */
+export function isSoftRejectReason(reason: string): boolean {
+  return (
+    reason.startsWith("opencode_http_") ||
+    reason.startsWith("opencode_network") ||
+    reason.startsWith("llm_parse:") ||
+    reason.startsWith("free_fail:") ||
+    reason.includes("opencode_http_") ||
+    reason.includes("infra_") ||
+    reason === "llm_unavailable"
+  );
 }
 
 export const store = new MemoryStore();
