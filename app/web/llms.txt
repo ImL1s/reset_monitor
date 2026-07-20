@@ -7,7 +7,10 @@
 
 ## Core
 - [Live reset status](https://reset-radar-web.pages.dev/): current public-reset state for Codex and Claude, time since the last public reset, and a 48h forecast.
-- [Prerendered status + FAQ](https://reset-radar.taiwan-traffic.workers.dev/share): dated, plain-language status for each provider.
+- [FAQ](https://reset-radar-web.pages.dev/faq): when Codex/Claude limits reset, public vs personal resets, 5-hour and weekly windows, banked resets, forecast accuracy.
+- [Reset history](https://reset-radar-web.pages.dev/history): dated log of every observed Codex and Claude public reset, with source links and interval stats.
+- [Methodology](https://reset-radar-web.pages.dev/methodology): sources monitored, how a green light is decided (fail-closed), and how the 48h Weibull forecast works.
+- [Prerendered status](https://reset-radar.taiwan-traffic.workers.dev/share): dated, plain-language status for each provider.
 
 ## Data (public API, no auth)
 - [Snapshot JSON](https://reset-radar.taiwan-traffic.workers.dev/v1/snapshot): per-provider status cards with display_status.

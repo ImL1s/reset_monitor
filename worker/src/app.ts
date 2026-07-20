@@ -79,6 +79,76 @@ function buildSnapshot(now = new Date()): SnapshotResponse {
   };
 }
 
+const SEO_ORIGIN = "https://reset-radar-web.pages.dev";
+
+/** Live, dated factual status sentence (pure store read). */
+function statusSentence(now = new Date()): string {
+  const snap = buildSnapshot(now);
+  const rel = (ms: number): string => {
+    const d = Math.max(0, (now.getTime() - ms) / 86_400_000);
+    if (d < 1) return `${Math.round(d * 24)}h ago`;
+    if (d < 10) return `${d.toFixed(1)}d ago`;
+    return `${Math.round(d)}d ago`;
+  };
+  const items = snap.providers
+    .filter((p) => p.monitored)
+    .map((p) => {
+      const ev = p.active_event ?? p.last_confirmed_event;
+      let when: string;
+      if (
+        p.display_status === "active_confirmed" ||
+        p.display_status === "active_confirmed_degraded"
+      ) {
+        when = "a public RESET is live now";
+      } else if (ev) {
+        const t = Date.parse(ev.effective_at || ev.verified_at);
+        when = Number.isFinite(t)
+          ? `last public reset ${rel(t)}`
+          : "no recent public reset";
+      } else {
+        when = "no public reset on record";
+      }
+      return `${p.display_name} — ${when}`;
+    });
+  return items.length
+    ? `As of ${snap.generated_at}, ${items.join("; ")}.`
+    : "No monitored providers.";
+}
+
+/** Shared crawlable HTML shell for SEO content pages (/faq, /methodology, /history). */
+function seoShell(opts: {
+  path: string;
+  title: string;
+  desc: string;
+  body: string;
+  jsonLd?: unknown;
+}): string {
+  const canonical = `${SEO_ORIGIN}${opts.path}`;
+  const img = `${SEO_ORIGIN}/icons/Icon-512.png`;
+  const ld = opts.jsonLd
+    ? `<script type="application/ld+json">${JSON.stringify(opts.jsonLd)}</script>`
+    : "";
+  return `<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>${escapeHtml(opts.title)}</title>
+<meta name="description" content="${escapeHtml(opts.desc)}"/>
+<link rel="canonical" href="${canonical}"/>
+<meta property="og:title" content="${escapeHtml(opts.title)}"/>
+<meta property="og:description" content="${escapeHtml(opts.desc)}"/>
+<meta property="og:type" content="article"/>
+<meta property="og:url" content="${canonical}"/>
+<meta property="og:site_name" content="RESET Radar"/>
+<meta property="og:image" content="${img}"/>
+<meta name="twitter:card" content="summary"/>
+${ld}
+<style>body{font-family:system-ui,-apple-system,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;background:#0B1220;color:#F8FAFC;line-height:1.6}a{color:#38BDF8}h1,h2{color:#F8FAFC;line-height:1.25}table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #334155;vertical-align:top}small,.muted{color:#94A3B8}nav a{margin-right:14px}</style>
+</head><body>
+<nav><a href="${SEO_ORIGIN}/">Board</a><a href="${SEO_ORIGIN}/faq">FAQ</a><a href="${SEO_ORIGIN}/methodology">Methodology</a><a href="${SEO_ORIGIN}/history">History</a></nav>
+${opts.body}
+<hr/><p><small>Independent utility. Not affiliated with OpenAI, Anthropic, xAI, Moonshot, z.ai, or Google. A confirmed public reset does not guarantee your personal quota is full.</small></p>
+</body></html>`;
+}
+
 export function createApp() {
   const app = new Hono();
 
@@ -373,10 +443,169 @@ export function createApp() {
 <h2>Current public-reset status</h2>
 <ul>${listHtml}</ul>
 <p>Last updated: <time datetime="${escapeHtml(asOf)}">${escapeHtml(asOf)}</time>.</p>
-<p><a href="https://reset-radar-web.pages.dev/">Open the live board</a></p>
+<p><a href="https://reset-radar-web.pages.dev/">Open the live board</a> · <a href="https://reset-radar-web.pages.dev/faq">FAQ</a> · <a href="https://reset-radar-web.pages.dev/history">Reset history</a> · <a href="https://reset-radar-web.pages.dev/methodology">Methodology</a></p>
 <p><small>Independent utility. Not affiliated with OpenAI, Anthropic, xAI, Moonshot, z.ai, or Google. A confirmed global reset does not guarantee your personal quota is full.</small></p>
 </body></html>`;
     return c.html(html, 200, HTML_SECURITY_HEADERS);
+  });
+
+  // ---- Crawlable SEO content pages (pure store reads — no LLM / no API key) ----
+  app.get("/faq", (c) => {
+    const now = new Date();
+    const codex = computeProviderStats(
+      store.eventsFor("codex" as ProviderId),
+      now,
+      "codex" as ProviderId,
+    );
+    const avg = codex.avg_interval_days;
+    const qas: [string, string][] = [
+      [
+        "What does RESET Radar track?",
+        "Whether OpenAI Codex / ChatGPT Work and Anthropic Claude have publicly reset usage limits — staff-announced, provider-wide 'hard resets' — plus the time since the last public reset and a heuristic 48-hour forecast, each with a link to the source announcement.",
+      ],
+      ["Did Codex or Claude reset usage limits recently?", statusSentence(now)],
+      [
+        "Is a public reset the same as my personal quota refilling?",
+        "No. A confirmed public/global RESET means many paid users had usage replenished; it does not guarantee your individual account is full, and it is not your personal 5-hour or weekly rolling window.",
+      ],
+      [
+        "When does the Codex 5-hour limit reset?",
+        "The personal 5-hour limit is a rolling window that starts from your first message. RESET Radar does not track your personal window — it tracks provider-wide public 'bonus' resets, which are separate and irregular.",
+      ],
+      [
+        "When does the Codex weekly limit reset?",
+        "The weekly limit is a rolling 7-day window per account. Public resets tracked here are separate staff actions, not your weekly rollover.",
+      ],
+      [
+        "When does Claude's usage limit reset?",
+        "Claude uses a rolling ~5-hour window plus a weekly cap per account. The public resets tracked here are separate, provider-wide events.",
+      ],
+      [
+        "What is a banked or free reset?",
+        "A banked reset is a redeemable reset offer announced by staff; it is not an automatic refill. RESET Radar shows it as a distinct 'banked' state, never a green public reset.",
+      ],
+      [
+        "How accurate is the 48-hour forecast?",
+        "It is a deterministic heuristic (a Weibull renewal survival model) fitted to confirmed hard-reset intervals, shown with an uncertainty range and its sample size. It is not official and never a confirmation — see the Methodology page.",
+      ],
+      [
+        "How often does OpenAI reset Codex limits?",
+        avg != null
+          ? `Across the tracked history, roughly every ${avg} days on average — but this varies widely, and resets tend to cluster around model launches.`
+          : "Not enough confirmed history yet to estimate an average interval.",
+      ],
+      [
+        "Is RESET Radar affiliated with OpenAI or Anthropic?",
+        "No. It is an independent utility, not affiliated with OpenAI, Anthropic, xAI, Moonshot, z.ai, or Google. It only reads public announcements and never logs into your AI accounts.",
+      ],
+    ];
+    const faqLd = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: qas.map(([q, a]) => ({
+        "@type": "Question",
+        name: q,
+        acceptedAnswer: { "@type": "Answer", text: a },
+      })),
+    };
+    const body =
+      `<h1>RESET Radar — FAQ: Codex &amp; Claude usage-limit resets</h1>` +
+      qas
+        .map(([q, a]) => `<h2>${escapeHtml(q)}</h2><p>${escapeHtml(a)}</p>`)
+        .join("");
+    return c.html(
+      seoShell({
+        path: "/faq",
+        title: "RESET Radar FAQ — when do Codex & Claude usage limits reset?",
+        desc: "FAQ: when Codex and Claude usage limits reset, public vs personal resets, 5-hour and weekly windows, banked resets, and how the 48h forecast works.",
+        body,
+        jsonLd: faqLd,
+      }),
+      200,
+      HTML_SECURITY_HEADERS,
+    );
+  });
+
+  app.get("/methodology", (c) => {
+    const body = `<h1>Methodology — how RESET Radar decides</h1>
+<h2>What counts as a "public reset"</h2>
+<p>A confirmed, staff-announced, provider-wide replenishment of usage limits (a "hard reset"), or a redeemable "banked" reset offer. It is not your personal 5-hour or weekly rollover, and a green light never guarantees your own account is full.</p>
+<h2>Sources</h2>
+<p>We poll allowlisted official/staff accounts (for example OpenAI's @thsottiaux and Anthropic's @ClaudeDevs) on a schedule via a public timeline mirror, with a fallback source. Every confirmed event links to its original announcement so it can be audited.</p>
+<h2>How a green light is decided (fail-closed)</h2>
+<p>Strict text rules must clear a usage-phrase floor and an all-users scope before a green light; catchphrases alone never qualify. Teasers, quotes, replies and negations are rejected. If a source goes stale it shows "source unhealthy", never "calm". A false green is treated as the highest-severity incident.</p>
+<h2>The 48-hour forecast</h2>
+<p>A deterministic Weibull renewal survival model is fitted to the intervals between confirmed hard resets. Given the time since the last reset, it reports the conditional probability of another public reset within 48 hours, with a jackknife uncertainty range and the sample size. Because the process is clustered and heavy-tailed, the probability is highest shortly after a reset and decays as a drought lengthens. The forecast is a demoted, explainable estimate — never a confirmation, never a notification, and it never turns a card green. With fewer than two confirmed hard resets it reports "insufficient data".</p>
+<h2>Honesty &amp; privacy</h2>
+<p>Zero login; the board only reads a public API and never accesses your AI accounts. We prefer "unknown" over a false green, and every confirmed event keeps a source link.</p>`;
+    return c.html(
+      seoShell({
+        path: "/methodology",
+        title:
+          "Methodology — how RESET Radar tracks and forecasts usage resets",
+        desc: "How RESET Radar decides a public reset (fail-closed rules, source auditing) and how the 48-hour Weibull renewal forecast works.",
+        body,
+      }),
+      200,
+      HTML_SECURITY_HEADERS,
+    );
+  });
+
+  app.get("/history", (c) => {
+    const now = new Date();
+    const monitored = store.listProviders().filter((p) => p.monitored);
+    const sections = monitored
+      .map((p) => {
+        const st = computeProviderStats(store.eventsFor(p.id), now, p.id);
+        const evs = store
+          .eventsFor(p.id)
+          .filter((e) => !e.retracted_at)
+          .sort(
+            (a, b) =>
+              Date.parse(b.effective_at || b.verified_at) -
+              Date.parse(a.effective_at || a.verified_at),
+          );
+        const rows = evs
+          .map((e) => {
+            const when = (e.effective_at || e.verified_at || "").slice(0, 10);
+            const link = e.source_url
+              ? `<a href="${escapeHtml(e.source_url)}" rel="nofollow noopener">source</a>`
+              : "";
+            return `<tr><td>${escapeHtml(when)}</td><td>${escapeHtml(e.type)}</td><td>${escapeHtml(e.title || "")}</td><td>${link}</td></tr>`;
+          })
+          .join("");
+        const statLine =
+          `${st.total_confirmed} confirmed (${st.hard_reset_count} hard, ${st.banked_credit_count} banked)` +
+          (st.avg_interval_days != null
+            ? ` · avg interval ${st.avg_interval_days}d`
+            : "") +
+          (st.days_since_last != null
+            ? ` · last ${st.days_since_last}d ago`
+            : "") +
+          (st.longest_drought_days != null
+            ? ` · longest gap ${st.longest_drought_days}d`
+            : "");
+        return (
+          `<h2>${escapeHtml(p.display_name)}</h2><p class="muted">${escapeHtml(statLine)}</p>` +
+          (rows
+            ? `<table><thead><tr><th>Date</th><th>Type</th><th>Announcement</th><th></th></tr></thead><tbody>${rows}</tbody></table>`
+            : `<p class="muted">No confirmed public resets on record yet.</p>`)
+        );
+      })
+      .join("");
+    const body = `<h1>Public reset history — Codex &amp; Claude</h1>
+<p>Every confirmed public usage-limit reset we have observed, newest first, with a link to the source announcement. Last updated ${escapeHtml(now.toISOString())}.</p>
+${sections}`;
+    return c.html(
+      seoShell({
+        path: "/history",
+        title: "Codex & Claude public reset history + stats",
+        desc: "Dated log of every observed Codex and Claude public usage-limit reset, with source links and interval stats (average interval, last reset, longest gap).",
+        body,
+      }),
+      200,
+      HTML_SECURITY_HEADERS,
+    );
   });
 
   app.get("/admin/v1/allowlist", (c) => {
