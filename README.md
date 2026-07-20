@@ -20,6 +20,7 @@
 | 全自動 | Cron 每 10 分拉 `@thsottiaux` / `@ClaudeDevs`（FxTwitter → Dayclaw fallback） |
 | 綠燈 | 嚴格模板 auto-confirm；失敗才問 LLM（**Zen free → Go 訂閱 fallback**） |
 | 假綠防護 | teaser / incoming / 否定句 reject；**規則與 LLM 皆需 usage 片語 floor + scope**；口頭禪 alone 不綠；seed 不延長 TTL |
+| Claude 臂 | soft classify 進 pending → `CLAUDE_STRONG` + floor + all-users scope；擋 API raise / promo / partial affected |
 | 歷史 | corpus seed + `/v1/stats`（以 `effective_at` 算 avg / drought，避免 re-import 失真） |
 | UI | 首屏說明綠/琥珀；Pending = Detected · not confirmed；About 與 free-auto 對齊 |
 | Admin | 僅緊急 retract / pipeline；production 需 `ADMIN_TOKEN` |

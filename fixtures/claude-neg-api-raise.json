@@ -1,0 +1,11 @@
+{
+  "provider": "claude",
+  "url": "https://x.com/ClaudeDevs/status/2090000000000000001",
+  "author_handle": "ClaudeDevs",
+  "post_id": "2090000000000000001",
+  "raw_text": "We've raised Claude Platform API rate limits for all users on the Tier 2 plan.",
+  "expected": {
+    "auto_green": false,
+    "exclude_or_reject": true
+  }
+}

@@ -58,6 +58,19 @@ describe("shouldAutoPublish fixtures", () => {
     assert.equal(r.ok, true);
   });
 
+  it("PROMOTE claude variant the", () => {
+    const f = loadFixture("claude-hard-reset-variant-the.json");
+    const r = shouldAutoPublish(candFromFixture(f));
+    assert.equal(r.ok, true);
+  });
+
+  it("REJECT claude partial affected", () => {
+    const f = loadFixture("claude-neg-affected-only.json");
+    const r = shouldAutoPublish(candFromFixture(f));
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "partial_or_promo");
+  });
+
   it("REJECT teaser should-we-reset", () => {
     const f = loadFixture("codex-teaser-should-we-reset.json");
     const r = shouldAutoPublish(candFromFixture(f));

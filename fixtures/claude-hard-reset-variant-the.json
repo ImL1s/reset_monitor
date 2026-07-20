@@ -1,0 +1,12 @@
+{
+  "provider": "claude",
+  "url": "https://x.com/ClaudeDevs/status/2077603834453770468",
+  "author_handle": "ClaudeDevs",
+  "post_id": "2077603834453770468",
+  "raw_text": "We've reset the 5-hour and weekly rate limits for all users.",
+  "expected": {
+    "type": "hard_reset",
+    "excluded": false,
+    "auto_green": true
+  }
+}

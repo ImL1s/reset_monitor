@@ -43,6 +43,36 @@ describe("classifyClaudeText", () => {
     assert.ok(r.hits.length > 0);
     assert.equal(r.excluded, false);
   });
+
+  it("soft-matches the/just variants (not ingest-kill)", () => {
+    for (const t of [
+      "We've reset the 5-hour and weekly rate limits for all users.",
+      "We've just reset 5-hour and weekly rate limits for all users.",
+    ]) {
+      const r = classifyClaudeText(t);
+      assert.equal(r.excluded, false, t);
+      assert.ok(r.hits.length > 0, t);
+    }
+  });
+
+  it("excludes API raise and promo higher", () => {
+    const raise = classifyClaudeText(
+      "We've raised Claude Platform API rate limits for all users.",
+    );
+    assert.equal(raise.excluded, true);
+    assert.equal(raise.excludeReason, "policy_raise_or_promo");
+    const promo = classifyClaudeText(
+      "We're keeping weekly limits 50% higher through August.",
+    );
+    assert.equal(promo.excluded, true);
+  });
+
+  it("excludes bare adjusting without reset", () => {
+    const r = classifyClaudeText(
+      "We're adjusting rate limits for all users this week.",
+    );
+    assert.equal(r.excluded, true);
+  });
 });
 
 describe("computeSourceHealth", () => {

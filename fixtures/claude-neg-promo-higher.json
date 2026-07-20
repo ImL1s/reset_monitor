@@ -1,0 +1,11 @@
+{
+  "provider": "claude",
+  "url": "https://x.com/ClaudeDevs/status/2090000000000000002",
+  "author_handle": "ClaudeDevs",
+  "post_id": "2090000000000000002",
+  "raw_text": "We're keeping Claude Code weekly limits 50% higher through the end of the month.",
+  "expected": {
+    "auto_green": false,
+    "exclude_or_reject": true
+  }
+}

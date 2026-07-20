@@ -1,0 +1,11 @@
+{
+  "provider": "claude",
+  "url": "https://x.com/ClaudeDevs/status/2090000000000000003",
+  "author_handle": "ClaudeDevs",
+  "post_id": "2090000000000000003",
+  "raw_text": "We've reset 5-hour and weekly rate limits for everyone affected by today's partial outage.",
+  "expected": {
+    "auto_green": false,
+    "reason_contains": "partial"
+  }
+}

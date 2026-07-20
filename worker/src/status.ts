@@ -280,6 +280,7 @@ export function classifyCodexText(text: string): {
   return { hits, type, scope, excluded: hits.length === 0 };
 }
 
+/** Soft funnel for Claude public reset posts — never green alone. */
 export function classifyClaudeText(text: string): {
   hits: string[];
   type: EventType;
@@ -287,20 +288,12 @@ export function classifyClaudeText(text: string): {
   excluded: boolean;
   excludeReason?: string;
 } {
-  const patterns = [
-    "we've reset 5-hour and weekly",
-    "we’ve reset 5-hour and weekly",
-    "reset 5-hour and weekly rate limits",
-    "rate limits for all users",
-    "reset everyone's 5-hour and weekly",
-    "reset everyone’s 5-hour and weekly",
-  ];
-  const lower = text.toLowerCase();
-  const hits = patterns.filter((p) => lower.includes(p));
+  // Normalize curly apostrophes so we've / we’ve match the same patterns
+  const lower = text.toLowerCase().replace(/[\u2018\u2019\u201b]/g, "'");
 
   if (/\?/.test(text) && /should we|shall we|maybe|might we/i.test(text)) {
     return {
-      hits,
+      hits: [],
       type: "hard_reset",
       scope: "unknown",
       excluded: true,
@@ -309,7 +302,7 @@ export function classifyClaudeText(text: string): {
   }
   if (/\bno reset\b|not reset|won't reset|will not reset/i.test(text)) {
     return {
-      hits,
+      hits: [],
       type: "hard_reset",
       scope: "unknown",
       excluded: true,
@@ -317,10 +310,89 @@ export function classifyClaudeText(text: string): {
     };
   }
 
+  // Hard-negative: policy raise / promo, not hard reset (kill before pending)
+  if (
+    /\braised\b.*\brate limits?\b|\brate limits?\b.*\braised\b/i.test(text) ||
+    /\bincreasing\b.*\b(limits?|usage)\b|\b(limits?|usage)\b.*\bincreasing\b/i.test(
+      text,
+    ) ||
+    /\bkeeping\b.{0,40}\b(limits?|usage).{0,20}\bhigher\b/i.test(text) ||
+    /\b50%\s*higher\b|\b2x\b.{0,30}\blimits?\b/i.test(text)
+  ) {
+    return {
+      hits: [],
+      type: "hard_reset",
+      scope: "unknown",
+      excluded: true,
+      excludeReason: "policy_raise_or_promo",
+    };
+  }
+
+  // Soft patterns: wider than CLAUDE_STRONG so variants reach pending/LLM
+  const softPatterns = [
+    "we've reset 5-hour and weekly",
+    "we have reset 5-hour and weekly",
+    "we've reset the 5-hour and weekly",
+    "we have reset the 5-hour and weekly",
+    "we've just reset 5-hour",
+    "we've just reset the 5-hour",
+    "reset 5-hour and weekly",
+    "reset the 5-hour and weekly",
+    "reset everyone's 5-hour and weekly",
+    "reset 5-hour and weekly rate limits",
+    "reset 5-hour and weekly usage limits",
+    "5-hour and weekly rate limits",
+    "5-hour and weekly usage limits",
+    "gone ahead and reset 5-hour",
+    "usage limits for everyone",
+    "usage limits for all",
+    "rate limits for all users", // only counts with reset co-presence below
+    "rate limits for everyone",
+    "we've reset rate limits",
+    "we have reset rate limits",
+    "reset rate limits for all",
+    "reset usage limits for all",
+    "reset usage limits for everyone",
+  ];
+
+  let hits = softPatterns.filter((p) => lower.includes(p));
+
+  // Co-presence: reset + (5-hour|5h|weekly) + (rate|usage) limit language
+  const hasResetVerb =
+    /\b(we've|we have|we)\s+(just\s+)?reset\b|\breset\b.{0,40}\b(rate|usage)\s+limits?\b|\b(rate|usage)\s+limits?\b.{0,40}\b(have been\s+)?reset\b/i.test(
+      text,
+    );
+  const hasWindow =
+    /5-hour|5 hour|5h|weekly/i.test(text) ||
+    /rate limits?|usage limits?/i.test(text);
+  if (hasResetVerb && hasWindow) {
+    hits = [...new Set([...hits, "co_presence_reset_limits"])];
+  }
+
+  // Drop bare "rate limits for all users" without any reset verb (API raise risk)
+  if (!hasResetVerb) {
+    hits = hits.filter(
+      (h) =>
+        h !== "rate limits for all users" &&
+        h !== "rate limits for everyone" &&
+        h !== "5-hour and weekly rate limits" &&
+        h !== "5-hour and weekly usage limits",
+    );
+  }
+
+  const scope =
+    /all users|everyone|all plans|across all|pro and max|subscribers/i.test(
+      text,
+    )
+      ? "all_paid"
+      : hits.length
+        ? "unknown"
+        : "unknown";
+
   return {
     hits,
     type: "hard_reset",
-    scope: hits.length ? "all_paid" : "unknown",
+    scope,
     excluded: hits.length === 0,
     excludeReason: hits.length === 0 ? "no_phrase_hit" : undefined,
   };

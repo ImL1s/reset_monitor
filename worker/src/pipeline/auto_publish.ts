@@ -117,13 +117,70 @@ export const USAGE_PHRASE_FLOOR = [
   "5h",
 ];
 
+/**
+ * Claude strong templates (closed). Curly apostrophes normalized at match time.
+ * Do NOT list bare "rate limits for all users" without reset co-presence.
+ */
 const CLAUDE_STRONG = [
+  "we've reset 5-hour and weekly rate limits for all users",
+  "we've reset 5-hour and weekly rate limits",
   "we've reset 5-hour and weekly",
-  "we’ve reset 5-hour and weekly",
-  "reset 5-hour and weekly rate limits",
+  "we've reset the 5-hour and weekly",
+  "we've just reset 5-hour and weekly",
+  "we've just reset the 5-hour and weekly",
+  "we have reset 5-hour and weekly",
+  "we have reset the 5-hour and weekly",
+  "we've reset everyone's 5-hour and weekly",
+  "reset everyone's 5-hour and weekly rate limits",
   "reset everyone's 5-hour and weekly",
-  "reset everyone’s 5-hour and weekly",
+  "reset 5-hour and weekly rate limits",
+  "reset 5-hour and weekly usage limits",
+  "reset the 5-hour and weekly rate limits",
+  "gone ahead and reset 5-hour and weekly",
+  "5-hour and weekly rate limits for all users",
+  "5-hour and weekly usage limits for everyone",
+  "usage limits for everyone, across all plans",
+  "usage limits for all subscribers",
+  "reset rate limits for all claude",
+  "we've reset rate limits for all",
 ];
+
+function normalizeQuotes(s: string): string {
+  return s.toLowerCase().replace(/[\u2018\u2019\u201b]/g, "'");
+}
+
+/** Claude strong hit; some templates require explicit \\breset\\b. */
+function claudeStrongHit(text: string): string | null {
+  const lower = normalizeQuotes(text);
+  const needReset = new Set([
+    "5-hour and weekly rate limits for all users",
+    "5-hour and weekly usage limits for everyone",
+    "usage limits for everyone, across all plans",
+    "usage limits for all subscribers",
+  ]);
+  for (const p of CLAUDE_STRONG) {
+    if (!lower.includes(p)) continue;
+    if (needReset.has(p) && !/\breset\b/i.test(text)) continue;
+    return p;
+  }
+  return null;
+}
+
+/** Partial / non-global — never auto-green as all-users hard reset. */
+function isClaudePartialOrPromo(text: string): boolean {
+  if (/\beveryone affected\b|\baffected users?\b|\baffected only\b/i.test(text)) {
+    return true;
+  }
+  if (
+    /\braised\b.*\brate limits?\b|\brate limits?\b.*\braised\b/i.test(text) ||
+    /\bincreasing\b.*\blimits?\b|\bkeeping\b.{0,40}\bhigher\b|\b50%\s*higher\b/i.test(
+      text,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
 
 function isQuestionTeaser(text: string): boolean {
   return (
@@ -219,18 +276,34 @@ export function shouldAutoPublish(cand: EventCandidate): AutoGateResult {
   }
 
   if (cand.provider === "claude") {
-    const strongHits = CLAUDE_STRONG.filter((p) => lower.includes(p));
-    if (strongHits.length === 0) {
+    if (isClaudePartialOrPromo(text)) {
+      return { ok: false, reason: "partial_or_promo" };
+    }
+    const strong = claudeStrongHit(text);
+    if (!strong) {
       return { ok: false, reason: "no_strong_template" };
     }
     if (!hasUsagePhraseFloor(text)) {
       return { ok: false, reason: "no_phrase_floor" };
     }
+    // Stricter than Codex hasGlobalScopeSignal: no bare "we've reset" as scope
+    const claudeScope =
+      /all users|everyone|all plans|across all|pro and max|pro & max|subscribers|\bfor all\b/i.test(
+        text,
+      );
+    if (!claudeScope) {
+      return { ok: false, reason: "no_scope_signal" };
+    }
+    const proMax =
+      /pro and max|pro & max/i.test(text) &&
+      !/everyone|across all plans|all subscribers/i.test(text);
     return {
       ok: true,
-      reason: `claude_strict:${strongHits[0]}`,
+      reason: `claude_strict:${strong}`,
       type: "hard_reset",
-      title: "Claude rate limits reset for all users (auto)",
+      title: proMax
+        ? "Claude rate limits reset for Pro/Max (auto)"
+        : "Claude rate limits reset for all users (auto)",
     };
   }
 
