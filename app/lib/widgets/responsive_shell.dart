@@ -38,20 +38,26 @@ class ResponsiveShell extends StatelessWidget {
             appBar: AppBar(
               title: Row(
                 children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: RadarColors.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: RadarColors.accent.withValues(alpha: 0.35),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      'assets/icon/icon.png',
+                      width: 32,
+                      height: 32,
+                      filterQuality: FilterQuality.medium,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: RadarColors.accent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.radar_rounded,
+                          size: 18,
+                          color: RadarColors.accent,
+                        ),
                       ),
-                    ),
-                    child: const Icon(
-                      Icons.radar_rounded,
-                      size: 18,
-                      color: RadarColors.accent,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -94,19 +100,26 @@ class ResponsiveShell extends StatelessWidget {
                       children: [
                         Tooltip(
                           message: 'RESET Radar',
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: RadarColors.accent.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: RadarColors.accent.withValues(alpha: 0.4),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.asset(
+                              'assets/icon/icon.png',
+                              width: 48,
+                              height: 48,
+                              filterQuality: FilterQuality.medium,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: RadarColors.accent.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: const Icon(
+                                  Icons.radar_rounded,
+                                  color: RadarColors.accent,
+                                ),
                               ),
-                            ),
-                            child: const Icon(
-                              Icons.radar_rounded,
-                              color: RadarColors.accent,
                             ),
                           ),
                         ),
