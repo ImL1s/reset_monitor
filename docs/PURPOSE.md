@@ -143,7 +143,7 @@ AI coding 時代，開發者同時訂閱多個工具（Codex / Claude / Grok / A
 | 首要 UX | 零 Auth 公開雷達 |
 | 客戶端 | Flutter；**MVP Web first** |
 | 商業 | Freemium 架構；**MVP 可不啟 Pro** |
-| 綠燈（MVP） | **Admin 核准後才 confirmed**；自動僅 detected |
+| 綠燈（full-auto parity 2026-07-20） | **嚴格模板自動 confirm**（`decision_by=auto_rules`，FxTwitter v2 + Dayclaw fallback cron）；可選 LLM gate；admin 僅緊急撤回。歷史 corpus ≥85% 覆蓋；teaser fixture 必須 reject。Stats：total / days_since / avg / drought |
 | X 資料（MVP） | **人工／半自動**為主，不爬蟲（錢不是主因；信任是） |
 | 監測心跳 | **Admin heartbeat** 更新 freshness；≠「有無新推文」 |
 | Free 通知 | **Telegram** |

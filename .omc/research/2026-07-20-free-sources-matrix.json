@@ -1,0 +1,118 @@
+[
+  {
+    "name": "fx_v2_tibo",
+    "status": 200,
+    "ms": 1099,
+    "bytes": 42819,
+    "n": 20,
+    "ids": [
+      "2079058139207573541",
+      "2079058139207573541",
+      "1953337039510003712",
+      "2078642674572419435",
+      "2078642674572419435"
+    ],
+    "preview": "{\"code\":200,\"results\":[{\"type\":\"status\",\"url\":\"https://x.com/thsottiaux/status/2079058139207573541\",\"id\":\"20790581392075"
+  },
+  {
+    "name": "fx_v2_claude",
+    "status": 200,
+    "ms": 1088,
+    "bytes": 43666,
+    "n": 16,
+    "ids": [
+      "2079103743535280508",
+      "2079103743535280508",
+      "2079099686703759653",
+      "2079099686703759653",
+      "2079099558089682944"
+    ],
+    "preview": "{\"code\":200,\"results\":[{\"type\":\"status\",\"url\":\"https://x.com/trq212/status/2079103743535280508\",\"id\":\"207910374353528050"
+  },
+  {
+    "name": "fx_status_fixture",
+    "status": 200,
+    "ms": 539,
+    "bytes": 3421,
+    "n": 1,
+    "ids": [
+      "2078320950488297917",
+      "2078320950488297917",
+      "2078320698049904640",
+      "2078320950488297917",
+      "1953337039510003712"
+    ],
+    "preview": "{\"code\":200,\"message\":\"OK\",\"tweet\":{\"url\":\"https://x.com/thsottiaux/status/2078320950488297917\",\"id\":\"207832095048829791"
+  },
+  {
+    "name": "vx_status_fixture",
+    "status": 200,
+    "ms": 880,
+    "bytes": 2137,
+    "n": null,
+    "ids": [
+      "2078302415804379218",
+      "2078310751878647932",
+      "2078310751878647932",
+      "2078320950488297917"
+    ],
+    "preview": "{\"allSameType\":true,\"article\":null,\"combinedMediaUrl\":null,\"communityNote\":null,\"conversationID\":\"2078320950488297917\",\""
+  },
+  {
+    "name": "jina_tibo",
+    "status": 200,
+    "ms": 414,
+    "bytes": 15160,
+    "n": null,
+    "ids": [
+      "1967642387116945904",
+      "1967642387116945904",
+      "1967642387116945904",
+      "1973934387323641871",
+      "1973715546194784297"
+    ],
+    "preview": "Title: Tibo (@thsottiaux) on X  URL Source: http://x.com/thsottiaux  Markdown Content: [](http://x.com/)  1.   [X](https"
+  },
+  {
+    "name": "jina_claude",
+    "status": 200,
+    "ms": 599,
+    "bytes": 1605,
+    "n": null,
+    "ids": [],
+    "preview": "Title: ClaudeDevs (@ClaudeDevs) on X  URL Source: http://x.com/ClaudeDevs  Markdown Content: 1.   [X](https://x.com/) 2."
+  },
+  {
+    "name": "xcancel_rss",
+    "status": 200,
+    "ms": 2209,
+    "bytes": 1630,
+    "n": null,
+    "ids": [],
+    "preview": "  <?xml version=\"1.0\" encoding=\"UTF-8\"?>   <rss xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:dc=\"http://purl.org/dc/el"
+  },
+  {
+    "name": "twiiit",
+    "status": null,
+    "ms": 505,
+    "bytes": 25,
+    "n": null,
+    "ids": [],
+    "preview": "HTTP Error 403: Forbidden"
+  },
+  {
+    "name": "nitter_net",
+    "status": 200,
+    "ms": 1307,
+    "bytes": 20677,
+    "n": null,
+    "ids": [
+      "2079058139207573541",
+      "2078702412085498087",
+      "2078697741455356367",
+      "2078697631019303273",
+      "2078642674572419435"
+    ],
+    "preview": "<?xml version=\"1.0\" encoding=\"UTF-8\"?> <rss xmlns:atom=\"http://www.w3.org/2005/Atom\" xmlns:dc=\"http://purl.org/dc/elemen"
+  }
+]

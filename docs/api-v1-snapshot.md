@@ -6,6 +6,35 @@
 
 ---
 
+## `GET /v1/stats`
+
+無 Auth。  
+`Cache-Control: public, max-age=15, s-maxage=30, stale-while-revalidate=60`
+
+### Response 200
+
+```json
+{
+  "schema_version": 1,
+  "as_of": "2026-07-20T12:00:00.000Z",
+  "overall": {
+    "provider": "all",
+    "total_confirmed": 35,
+    "hard_reset_count": 30,
+    "banked_credit_count": 5,
+    "last_reset_at": "2026-07-18T03:28:22.000Z",
+    "days_since_last": 2.2,
+    "avg_interval_days": 8.9,
+    "longest_drought_days": 67.7
+  },
+  "providers": []
+}
+```
+
+## `GET /v1/monitor`
+
+公開監控模式（無 secrets）：`mode`, `source`, `auto_publish`, `monitoring_enabled`, `last_run`.
+
 ## `GET /v1/snapshot`
 
 無 Auth。  

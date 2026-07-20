@@ -35,13 +35,14 @@
 見 PURPOSE。方案 = **公開事件雷達（zero-auth）** + 可選個人層（後）。
 
 ```
-[半自動/未來 API] 官帳貼文
-  → RawSourceRecord
-  → EventCandidate（規則，非綠燈）
-  → [Admin 核准] PublishedEvent
-  → ProviderSnapshot + Public API
-  → Flutter Web Board + Telegram
-  → (後) FCM / Pro
+Cron */10 (free-auto)
+  → FxTwitter v2 timeline (primary) | Dayclaw public items (fallback)
+  → RawSourceRecord + EventCandidate
+  → AutoPublishGate (strict templates; optional LLM_GATE_*)
+  → PublishedEvent (decision_by=auto_rules)
+  → ProviderSnapshot + /v1/stats + /v1/events
+  → Flutter Web Board + Telegram (when secrets set)
+Admin: emergency retract / kill only
 ```
 
 ---
