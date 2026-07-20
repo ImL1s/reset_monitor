@@ -1,0 +1,215 @@
+class SnapshotResponse {
+  SnapshotResponse({
+    required this.schemaVersion,
+    required this.generatedAt,
+    required this.providers,
+  });
+
+  final int schemaVersion;
+  final String generatedAt;
+  final List<ProviderCardData> providers;
+
+  factory SnapshotResponse.fromJson(Map<String, dynamic> json) {
+    final list = (json['providers'] as List? ?? [])
+        .cast<Map<String, dynamic>>()
+        .map(ProviderCardData.fromJson)
+        .toList();
+    return SnapshotResponse(
+      schemaVersion: json['schema_version'] as int? ?? 1,
+      generatedAt: json['generated_at'] as String? ?? '',
+      providers: list,
+    );
+  }
+}
+
+class ProviderCardData {
+  ProviderCardData({
+    required this.provider,
+    required this.displayName,
+    required this.monitored,
+    required this.displayStatus,
+    required this.sourceHealth,
+    required this.asOf,
+    this.lastOperatorHeartbeatAt,
+    this.lastSuccessfulIngestAt,
+    this.authorityHint,
+    this.coverageNote,
+    this.staleReason,
+    this.activeEvent,
+    this.lastConfirmedEvent,
+    this.pendingDetection,
+  });
+
+  final String provider;
+  final String displayName;
+  final bool monitored;
+  final String displayStatus;
+  final String sourceHealth;
+  final String asOf;
+  final String? lastOperatorHeartbeatAt;
+  final String? lastSuccessfulIngestAt;
+  final String? authorityHint;
+  final String? coverageNote;
+  final String? staleReason;
+  final EventData? activeEvent;
+  final EventData? lastConfirmedEvent;
+  final PendingDetection? pendingDetection;
+
+  factory ProviderCardData.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic>? asMap(dynamic v) =>
+        v is Map<String, dynamic> ? v : null;
+    return ProviderCardData(
+      provider: json['provider'] as String? ?? '?',
+      displayName: json['display_name'] as String? ?? '?',
+      monitored: json['monitored'] == true,
+      displayStatus: json['display_status'] as String? ?? 'unknown',
+      sourceHealth: json['source_health'] as String? ?? 'unknown',
+      asOf: json['as_of'] as String? ?? '',
+      lastOperatorHeartbeatAt: json['last_operator_heartbeat_at'] as String?,
+      lastSuccessfulIngestAt: json['last_successful_ingest_at'] as String?,
+      authorityHint: json['authority_hint'] as String?,
+      coverageNote: json['coverage_note'] as String?,
+      staleReason: json['stale_reason'] as String?,
+      activeEvent: EventData.tryParse(asMap(json['active_event'])),
+      lastConfirmedEvent: EventData.tryParse(asMap(json['last_confirmed_event'])),
+      pendingDetection: PendingDetection.tryParse(asMap(json['pending_detection'])),
+    );
+  }
+}
+
+class EventData {
+  EventData({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.sourceUrl,
+    required this.displayUntil,
+    required this.verifiedAt,
+    this.bodyExcerpt,
+    this.claimNote,
+    this.retracted = false,
+    this.provider,
+  });
+
+  final String id;
+  final String type;
+  final String title;
+  final String sourceUrl;
+  final String displayUntil;
+  final String verifiedAt;
+  final String? bodyExcerpt;
+  final String? claimNote;
+  final bool retracted;
+  final String? provider;
+
+  static EventData? tryParse(Map<String, dynamic>? json) {
+    if (json == null) return null;
+    return EventData(
+      id: json['id'] as String? ?? '',
+      type: json['type'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      sourceUrl: json['source_url'] as String? ?? '',
+      displayUntil: json['display_until'] as String? ?? '',
+      verifiedAt: json['verified_at'] as String? ?? '',
+      bodyExcerpt: json['body_excerpt'] as String?,
+      claimNote: json['claim_note'] as String?,
+      retracted: json['retracted'] == true,
+      provider: json['provider'] as String?,
+    );
+  }
+}
+
+class PendingDetection {
+  PendingDetection({
+    required this.candidateId,
+    required this.message,
+    required this.sourceUrl,
+    required this.createdAt,
+  });
+
+  final String candidateId;
+  final String message;
+  final String sourceUrl;
+  final String createdAt;
+
+  static PendingDetection? tryParse(Map<String, dynamic>? json) {
+    if (json == null) return null;
+    return PendingDetection(
+      candidateId: json['candidate_id'] as String? ?? '',
+      message: json['message'] as String? ?? 'Pending',
+      sourceUrl: json['source_url'] as String? ?? '',
+      createdAt: json['created_at'] as String? ?? '',
+    );
+  }
+}
+
+class TimelineResponse {
+  TimelineResponse({required this.items, required this.asOf});
+
+  final List<EventData> items;
+  final String asOf;
+
+  factory TimelineResponse.fromJson(Map<String, dynamic> json) {
+    final raw = (json['items'] as List? ?? []).cast<Map<String, dynamic>>();
+    return TimelineResponse(
+      asOf: json['as_of'] as String? ?? '',
+      items: raw.map((e) => EventData.tryParse(e)!).toList(),
+    );
+  }
+}
+
+class ProviderStats {
+  ProviderStats({
+    required this.provider,
+    required this.totalConfirmed,
+    required this.hardResetCount,
+    required this.bankedCreditCount,
+    this.lastResetAt,
+    this.daysSinceLast,
+    this.avgIntervalDays,
+    this.longestDroughtDays,
+  });
+
+  final String provider;
+  final int totalConfirmed;
+  final int hardResetCount;
+  final int bankedCreditCount;
+  final String? lastResetAt;
+  final double? daysSinceLast;
+  final double? avgIntervalDays;
+  final double? longestDroughtDays;
+
+  factory ProviderStats.fromJson(Map<String, dynamic> json) => ProviderStats(
+        provider: json['provider'] as String? ?? 'all',
+        totalConfirmed: json['total_confirmed'] as int? ?? 0,
+        hardResetCount: json['hard_reset_count'] as int? ?? 0,
+        bankedCreditCount: json['banked_credit_count'] as int? ?? 0,
+        lastResetAt: json['last_reset_at'] as String?,
+        daysSinceLast: (json['days_since_last'] as num?)?.toDouble(),
+        avgIntervalDays: (json['avg_interval_days'] as num?)?.toDouble(),
+        longestDroughtDays: (json['longest_drought_days'] as num?)?.toDouble(),
+      );
+}
+
+class StatsResponse {
+  StatsResponse({
+    required this.asOf,
+    required this.overall,
+    required this.providers,
+  });
+
+  final String asOf;
+  final ProviderStats overall;
+  final List<ProviderStats> providers;
+
+  factory StatsResponse.fromJson(Map<String, dynamic> json) => StatsResponse(
+        asOf: json['as_of'] as String? ?? '',
+        overall: ProviderStats.fromJson(
+          (json['overall'] as Map<String, dynamic>? ?? {}),
+        ),
+        providers: ((json['providers'] as List?) ?? [])
+            .cast<Map<String, dynamic>>()
+            .map(ProviderStats.fromJson)
+            .toList(),
+      );
+}

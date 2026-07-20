@@ -42,3 +42,7 @@ coverage/
 # Misc
 *.swp
 *~
+
+# Playwright MCP / local UI dumps
+.playwright-mcp/
+.omc/artifacts/
