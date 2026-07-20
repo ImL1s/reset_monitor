@@ -124,7 +124,7 @@ function seoShell(opts: {
   jsonLd?: unknown;
 }): string {
   const canonical = `${SEO_ORIGIN}${opts.path}`;
-  const img = `${SEO_ORIGIN}/icons/Icon-512.png`;
+  const img = `${SEO_ORIGIN}/og-card.png`;
   const ld = opts.jsonLd
     ? `<script type="application/ld+json">${JSON.stringify(opts.jsonLd)}</script>`
     : "";
@@ -139,7 +139,7 @@ function seoShell(opts: {
 <meta property="og:url" content="${canonical}"/>
 <meta property="og:site_name" content="RESET Radar"/>
 <meta property="og:image" content="${img}"/>
-<meta name="twitter:card" content="summary"/>
+<meta name="twitter:card" content="summary_large_image"/>
 ${ld}
 <style>body{font-family:system-ui,-apple-system,sans-serif;max-width:760px;margin:2rem auto;padding:0 1rem;background:#0B1220;color:#F8FAFC;line-height:1.6}a{color:#38BDF8}h1,h2{color:#F8FAFC;line-height:1.25}table{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #334155;vertical-align:top}small,.muted{color:#94A3B8}nav a{margin-right:14px}</style>
 </head><body>
@@ -400,7 +400,7 @@ export function createApp() {
     const listHtml = items
       .map((x) => `<li>${escapeHtml(`${x.name}: ${x.when}`)}</li>`)
       .join("");
-    const img = "https://reset-radar-web.pages.dev/icons/Icon-512.png";
+    const img = "https://reset-radar-web.pages.dev/og-card.png";
     const faq = {
       "@context": "https://schema.org",
       "@type": "FAQPage",
@@ -433,7 +433,7 @@ export function createApp() {
 <meta property="og:url" content="https://reset-radar-web.pages.dev/"/>
 <meta property="og:site_name" content="RESET Radar"/>
 <meta property="og:image" content="${img}"/>
-<meta name="twitter:card" content="summary"/>
+<meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:image" content="${img}"/>
 <script type="application/ld+json">${JSON.stringify(faq)}</script>
 </head>
