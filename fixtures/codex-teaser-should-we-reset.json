@@ -1,0 +1,11 @@
+{
+  "provider": "codex",
+  "url": "https://x.com/thsottiaux/status/2077271889626706300",
+  "author_handle": "thsottiaux",
+  "post_id": "2077271889626706300",
+  "raw_text": "Embarrassment of riches. But looks like we might hit 9M soon. Should we reset the ChatGPT Work and Codex usage again or give it some space?",
+  "expected": {
+    "excluded": true,
+    "excludeReason": "question_teaser"
+  }
+}

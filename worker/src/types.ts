@@ -1,0 +1,191 @@
+export type ProviderId =
+  | "codex"
+  | "claude"
+  | "grok"
+  | "kimi"
+  | "glm"
+  | "antigravity";
+
+export type EventType =
+  | "hard_reset"
+  | "banked_credit"
+  | "policy_change"
+  | "other";
+
+export type Scope = "all_paid" | "subset" | "unknown";
+
+export type AuthorityGrade = "official_product" | "staff" | "other";
+
+export type SourceHealth = "fresh" | "degraded" | "stale" | "disabled";
+
+export type DisplayStatus =
+  | "active_confirmed"
+  | "active_confirmed_degraded"
+  | "detected_pending"
+  | "no_recent_confirmed"
+  | "source_unhealthy"
+  | "cold_start"
+  | "not_monitored";
+
+export type CandidateStatus = "pending_review" | "rejected" | "promoted";
+
+export interface EvidenceItem {
+  url: string;
+  post_id: string;
+  author_handle: string;
+  author_user_id?: string;
+  raw_text: string;
+  fetched_at: string;
+  content_hash?: string;
+}
+
+export interface PublishedEvent {
+  id: string;
+  provider: ProviderId;
+  type: EventType;
+  scope: Scope;
+  scope_detail?: string | null;
+  title: string;
+  body_excerpt?: string | null;
+  source_url: string;
+  source_post_id: string;
+  source_author?: string | null;
+  authority_grade: AuthorityGrade;
+  confidence: "confirmed";
+  effective_at: string;
+  display_until: string;
+  expires_at?: string | null;
+  announced_at?: string | null;
+  first_seen_at: string;
+  verified_at: string;
+  decision_by: string;
+  decision_reason?: string | null;
+  rule_version?: string | null;
+  evidence: EvidenceItem[];
+  candidate_id?: string | null;
+  claim_url?: string | null;
+  claim_note?: string | null;
+  retracted_at?: string | null;
+  retract_reason?: string | null;
+  retract_by?: string | null;
+}
+
+export interface EventCandidate {
+  id: string;
+  provider: ProviderId;
+  raw_source_id: string;
+  suggested_type: EventType;
+  suggested_scope: Scope;
+  rule_hits: string[];
+  rule_version: string;
+  status: CandidateStatus;
+  reject_reason?: string | null;
+  created_at: string;
+  updated_at: string;
+  source_url: string;
+  raw_text: string;
+  post_id: string;
+  author_handle: string;
+  author_user_id?: string;
+}
+
+export interface RawSource {
+  id: string;
+  platform: string;
+  author_user_id?: string;
+  author_handle: string;
+  post_id: string;
+  url: string;
+  fetched_at: string;
+  raw_text: string;
+  is_reply: boolean;
+  is_quote: boolean;
+  is_retweet: boolean;
+  created_at: string;
+}
+
+export interface ProviderConfig {
+  id: ProviderId;
+  display_name: string;
+  monitored: boolean;
+  authority_hint?: string | null;
+  coverage_note?: string | null;
+}
+
+export interface ProviderRuntimeMeta {
+  last_successful_ingest_at?: string | null;
+  last_operator_heartbeat_at?: string | null;
+}
+
+export interface ProviderSnapshotCard {
+  provider: ProviderId;
+  display_name: string;
+  monitored: boolean;
+  display_status: DisplayStatus;
+  event_status: DisplayStatus;
+  monitoring_status: SourceHealth;
+  as_of: string;
+  last_successful_ingest_at?: string | null;
+  last_operator_heartbeat_at?: string | null;
+  source_health: SourceHealth;
+  stale_reason?: string | null;
+  authority_hint?: string | null;
+  coverage_note?: string | null;
+  active_event: PublicEvent | null;
+  last_confirmed_event: PublicEvent | null;
+  pending_detection: PendingDetection | null;
+}
+
+export interface PublicEvent {
+  id: string;
+  type: EventType;
+  scope: Scope;
+  scope_detail?: string | null;
+  title: string;
+  body_excerpt?: string | null;
+  source_url: string;
+  source_post_id: string;
+  source_author?: string | null;
+  authority_grade: AuthorityGrade;
+  confidence: "confirmed";
+  effective_at: string;
+  display_until: string;
+  verified_at: string;
+  claim_url?: string | null;
+  claim_note?: string | null;
+  retracted: boolean;
+}
+
+export interface PendingDetection {
+  candidate_id: string;
+  suggested_type: EventType;
+  source_url: string;
+  created_at: string;
+  message: string;
+}
+
+export interface SnapshotResponse {
+  schema_version: number;
+  generated_at: string;
+  providers: ProviderSnapshotCard[];
+}
+
+export interface EventsResponse {
+  schema_version: number;
+  as_of: string;
+  items: Array<PublicEvent & { provider: ProviderId; evidence: EvidenceItem[] }>;
+  next_cursor: string | null;
+  has_more: boolean;
+}
+
+/** hours */
+export const CONFIG = {
+  schemaVersion: 1,
+  heartbeatFreshHours: 4,
+  heartbeatDegradedHours: 12,
+  displayTtlHardHours: 24,
+  displayTtlBankedHours: 24,
+  displayTtlPolicyHours: 72,
+  timelineDays: 90,
+  ruleVersion: "2026-07-20.1",
+} as const;

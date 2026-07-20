@@ -1,0 +1,13 @@
+{
+  "provider": "claude",
+  "url": "https://x.com/ClaudeDevs/status/2077603834453770467",
+  "author_handle": "ClaudeDevs",
+  "post_id": "2077603834453770467",
+  "announced_at": "2026-07-16T03:58:48.000Z",
+  "raw_text": "We've reset 5-hour and weekly rate limits for all users.",
+  "expected": {
+    "type": "hard_reset",
+    "scope": "all_paid",
+    "excluded": false
+  }
+}

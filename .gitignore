@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+
+# Build
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+*.log
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local / agent state
+.omc/state/
+.omc/sessions/
+.omx/
+.omg/
+
+# Worker
+worker/.wrangler/
+worker/dist/
+
+# Coverage
+coverage/
+*.lcov
+
+# Misc
+*.swp
+*~

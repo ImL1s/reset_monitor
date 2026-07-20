@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>RESET Radar Admin</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; background: #0b1220; color: #e8eefc; }
+    body { max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    h1 { font-size: 1.4rem; }
+    label { display: block; margin-top: 12px; font-size: 0.85rem; color: #9fb0d0; }
+    input, select, textarea, button {
+      width: 100%; box-sizing: border-box; margin-top: 4px;
+      padding: 10px; border-radius: 8px; border: 1px solid #2a3a55;
+      background: #121a2b; color: #e8eefc;
+    }
+    textarea { min-height: 100px; font-family: ui-monospace, monospace; }
+    button { cursor: pointer; background: #0f766e; border: none; font-weight: 600; margin-top: 12px; }
+    button.secondary { background: #334155; }
+    button.danger { background: #9f1239; }
+    pre {
+      background: #121a2b; padding: 12px; border-radius: 8px; overflow: auto;
+      font-size: 12px; border: 1px solid #2a3a55;
+    }
+    .row { display: flex; gap: 8px; }
+    .row button { flex: 1; }
+    .muted { color: #9fb0d0; font-size: 0.85rem; }
+    a { color: #5eead4; }
+  </style>
+</head>
+<body>
+  <h1>RESET Radar · Admin（半自動）</h1>
+  <p class="muted">本地 dev bypass 開著。綠燈必須 Confirm。不代表個人額度。<a href="/v1/snapshot" target="_blank">snapshot JSON</a> · <a href="/share" target="_blank">share OG</a></p>
+
+  <div class="row">
+    <button type="button" class="secondary" id="hbCodex">Heartbeat Codex</button>
+    <button type="button" class="secondary" id="hbClaude">Heartbeat Claude</button>
+  </div>
+
+  <h2>Ingest</h2>
+  <label>Provider
+    <select id="provider">
+      <option value="codex">codex</option>
+      <option value="claude">claude</option>
+    </select>
+  </label>
+  <label>Tweet / post URL
+    <input id="url" placeholder="https://x.com/thsottiaux/status/…"/>
+  </label>
+  <label>Author handle
+    <input id="handle" placeholder="thsottiaux or ClaudeDevs"/>
+  </label>
+  <label>Raw text
+    <textarea id="raw" placeholder="貼文全文…"></textarea>
+  </label>
+  <button type="button" id="ingest">Ingest → pending</button>
+
+  <h2>Candidate</h2>
+  <label>Candidate ID
+    <input id="candId" placeholder="from ingest response"/>
+  </label>
+  <div class="row">
+    <button type="button" id="confirm">Confirm → green</button>
+    <button type="button" class="danger" id="reject">Reject</button>
+  </div>
+
+  <h2>Retract</h2>
+  <label>Event ID
+    <input id="eventId" placeholder="evt_…"/>
+  </label>
+  <button type="button" class="danger" id="retract">Retract</button>
+
+  <h2>Log</h2>
+  <pre id="log">ready</pre>
+
+  <script>
+    const log = (x) => {
+      document.getElementById('log').textContent =
+        typeof x === 'string' ? x : JSON.stringify(x, null, 2);
+    };
+    async function api(method, path, body) {
+      const res = await fetch(path, {
+        method,
+        headers: body ? { 'content-type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      log({ status: res.status, data });
+      return { res, data };
+    }
+    document.getElementById('hbCodex').onclick = () =>
+      api('POST', '/admin/v1/heartbeat', { provider: 'codex' });
+    document.getElementById('hbClaude').onclick = () =>
+      api('POST', '/admin/v1/heartbeat', { provider: 'claude' });
+    document.getElementById('ingest').onclick = async () => {
+      const provider = document.getElementById('provider').value;
+      const url = document.getElementById('url').value.trim();
+      const handle = document.getElementById('handle').value.trim();
+      const raw_text = document.getElementById('raw').value.trim();
+      const { data } = await api('POST', '/admin/v1/ingest', {
+        url, provider, author_handle: handle || undefined, raw_text,
+      });
+      if (data.candidate?.id) {
+        document.getElementById('candId').value = data.candidate.id;
+      }
+    };
+    document.getElementById('confirm').onclick = async () => {
+      const id = document.getElementById('candId').value.trim();
+      const { data } = await api('POST', `/admin/v1/candidates/${id}/confirm`, {
+        decision_reason: 'admin_ui',
+      });
+      if (data.event?.id) document.getElementById('eventId').value = data.event.id;
+    };
+    document.getElementById('reject').onclick = () => {
+      const id = document.getElementById('candId').value.trim();
+      return api('POST', `/admin/v1/candidates/${id}/reject`, { reason: 'admin_ui' });
+    };
+    document.getElementById('retract').onclick = () => {
+      const id = document.getElementById('eventId').value.trim();
+      return api('POST', `/admin/v1/events/${id}/retract`, { reason: 'admin_ui' });
+    };
+  </script>
+</body>
+</html>

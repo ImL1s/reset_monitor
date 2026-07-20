@@ -1,0 +1,13 @@
+name = "reset-radar"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "reset-radar"
+database_id = "local-dev-placeholder"
+
+[vars]
+SCHEMA_VERSION = "1"
+# Production fail-closed. Local: npm run dev:local sets bypass=1 in process.
+ADMIN_DEV_BYPASS = "0"
