@@ -108,4 +108,21 @@ describe("claude gate parity", () => {
     assert.equal(g.ok, false);
     assert.equal(g.reason, "no_scope_signal");
   });
+
+  it("Thanks for all the patience is not scope", () => {
+    const g = shouldAutoPublish(
+      pending(
+        "We've reset 5-hour and weekly rate limits. Thanks for all the patience.",
+      ),
+    );
+    assert.equal(g.ok, false);
+    assert.equal(g.reason, "no_scope_signal");
+  });
+
+  it("reset + historical raise still soft-classifies and can green", () => {
+    const text =
+      "We've reset 5-hour and weekly rate limits for all users. Last month we raised limits.";
+    assert.equal(classifyClaudeText(text).excluded, false);
+    assert.equal(shouldAutoPublish(pending(text)).ok, true);
+  });
 });

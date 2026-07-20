@@ -3,9 +3,11 @@ import { fetchFxTimeline } from "../sources/fxtwitter.js";
 import { fetchDayclawItems } from "../sources/dayclaw.js";
 import type { FetchedPost } from "../sources/types.js";
 import {
+  hasClaudeGlobalScopeSignal,
   hasGlobalScopeSignal,
   hasUsagePhraseFloor,
   isBanked,
+  isClaudePartialOrPromo,
   shouldAutoPublish,
 } from "./auto_publish.js";
 import { llmJudgePromote } from "./llm_gate.js";
@@ -132,51 +134,66 @@ async function tryPromoteCandidate(
   const llmToken =
     g.OPENCODE_GO_API_KEY || g.OPENCODE_ZEN_API_KEY || g.LLM_GATE_TOKEN;
 
-  if (!gate.ok && llmToken) {
-    const j = await llmJudgePromote(cand, {
-      url: g.LLM_GATE_URL,
-      token: llmToken,
-      mode: g.LLM_GATE_MODE ?? "opencode_free_then_go",
-      model: g.OPENCODE_ZEN_MODEL ?? "deepseek-v4-flash",
-      baseUrl: g.OPENCODE_ZEN_BASE ?? "https://opencode.ai/zen/go/v1",
-      freeModel: "deepseek-v4-flash-free",
-      goModel: "deepseek-v4-flash",
-      freeBase: "https://opencode.ai/zen/v1",
-      goBase: "https://opencode.ai/zen/go/v1",
-      fetchImpl,
-    });
-    if (j.ok) {
-      // Phrase floor: LLM cannot invent green without usage-limit language
-      if (!hasUsagePhraseFloor(cand.raw_text)) {
-        // Hard reject — same text will never grow a floor; avoid infinite LLM burn
-        gate = { ok: false, reason: "llm_no_phrase_floor" };
-      } else if (
-        j.type !== "banked_credit" &&
-        !isBanked(cand.raw_text) &&
-        !hasGlobalScopeSignal(cand.raw_text)
-      ) {
-        // Deterministic scope second gate (P1): no pure "rate limit / 5h" narrative
-        gate = { ok: false, reason: "llm_no_scope_signal" };
-      } else {
-        const via = j.via ? `:${j.via}` : "";
-        const type = j.type === "banked_credit" || isBanked(cand.raw_text)
-          ? "banked_credit"
-          : j.type;
-        gate = {
-          ok: true,
-          reason: j.reason,
-          type,
-          title:
-            type === "banked_credit"
-              ? `Banked reset (llm${via})`
-              : `Hard reset (llm${via})`,
-        };
-        decisionBy = "auto_rules_llm";
-      }
-    } else if (isInfraFailureReason(j.reason) || isSoftRejectReason(j.reason)) {
-      return { kind: "soft_pending", reason: j.reason };
+  // Content hard-stops: never send to LLM (partial/promo/teaser already in gate)
+  const noLlmReasons = new Set([
+    "partial_or_promo",
+    "question_teaser",
+    "negation",
+    "scheduled_incoming",
+  ]);
+
+  if (!gate.ok && llmToken && !noLlmReasons.has(gate.reason)) {
+    // Claude partial may only be known via helper if reason differed
+    if (cand.provider === "claude" && isClaudePartialOrPromo(cand.raw_text)) {
+      gate = { ok: false, reason: "partial_or_promo" };
     } else {
-      gate = { ok: false, reason: j.reason };
+      const j = await llmJudgePromote(cand, {
+        url: g.LLM_GATE_URL,
+        token: llmToken,
+        mode: g.LLM_GATE_MODE ?? "opencode_free_then_go",
+        model: g.OPENCODE_ZEN_MODEL ?? "deepseek-v4-flash",
+        baseUrl: g.OPENCODE_ZEN_BASE ?? "https://opencode.ai/zen/go/v1",
+        freeModel: "deepseek-v4-flash-free",
+        goModel: "deepseek-v4-flash",
+        freeBase: "https://opencode.ai/zen/v1",
+        goBase: "https://opencode.ai/zen/go/v1",
+        fetchImpl,
+      });
+      if (j.ok) {
+        if (cand.provider === "claude" && isClaudePartialOrPromo(cand.raw_text)) {
+          gate = { ok: false, reason: "partial_or_promo" };
+        } else if (!hasUsagePhraseFloor(cand.raw_text)) {
+          gate = { ok: false, reason: "llm_no_phrase_floor" };
+        } else if (
+          j.type !== "banked_credit" &&
+          !isBanked(cand.raw_text) &&
+          !(cand.provider === "claude"
+            ? hasClaudeGlobalScopeSignal(cand.raw_text)
+            : hasGlobalScopeSignal(cand.raw_text))
+        ) {
+          gate = { ok: false, reason: "llm_no_scope_signal" };
+        } else {
+          const via = j.via ? `:${j.via}` : "";
+          const type =
+            j.type === "banked_credit" || isBanked(cand.raw_text)
+              ? "banked_credit"
+              : j.type;
+          gate = {
+            ok: true,
+            reason: j.reason,
+            type,
+            title:
+              type === "banked_credit"
+                ? `Banked reset (llm${via})`
+                : `Hard reset (llm${via})`,
+          };
+          decisionBy = "auto_rules_llm";
+        }
+      } else if (isInfraFailureReason(j.reason) || isSoftRejectReason(j.reason)) {
+        return { kind: "soft_pending", reason: j.reason };
+      } else {
+        gate = { ok: false, reason: j.reason };
+      }
     }
   }
 

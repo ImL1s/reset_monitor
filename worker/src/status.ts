@@ -310,14 +310,20 @@ export function classifyClaudeText(text: string): {
     };
   }
 
-  // Hard-negative: policy raise / promo, not hard reset (kill before pending)
+  // Hard-negative: policy raise / promo WITHOUT a hard-reset verb
+  // (do not kill "We've reset … Last month we raised …")
+  const hasResetVerb =
+    /\b(we've|we have|we)\s+(just\s+)?reset\b|\breset\b.{0,40}\b(rate|usage)\s+limits?\b|\b(rate|usage)\s+limits?\b.{0,40}\b(have been\s+)?reset\b|\bgone ahead and reset\b/i.test(
+      text,
+    );
   if (
-    /\braised\b.*\brate limits?\b|\brate limits?\b.*\braised\b/i.test(text) ||
-    /\bincreasing\b.*\b(limits?|usage)\b|\b(limits?|usage)\b.*\bincreasing\b/i.test(
+    !hasResetVerb &&
+    (/\braised\b.{0,60}\brate limits?\b|\brate limits?\b.{0,60}\braised\b/i.test(
       text,
     ) ||
-    /\bkeeping\b.{0,40}\b(limits?|usage).{0,20}\bhigher\b/i.test(text) ||
-    /\b50%\s*higher\b|\b2x\b.{0,30}\blimits?\b/i.test(text)
+      /\bincreasing\b.{0,40}\b(limits?|usage)\b/i.test(text) ||
+      /\bkeeping\b.{0,40}\b(limits?|usage).{0,20}\bhigher\b/i.test(text) ||
+      /\b50%\s*higher\b|\b2x\b.{0,30}\blimits?\b/i.test(text))
   ) {
     return {
       hits: [],
@@ -358,10 +364,6 @@ export function classifyClaudeText(text: string): {
   let hits = softPatterns.filter((p) => lower.includes(p));
 
   // Co-presence: reset + (5-hour|5h|weekly) + (rate|usage) limit language
-  const hasResetVerb =
-    /\b(we've|we have|we)\s+(just\s+)?reset\b|\breset\b.{0,40}\b(rate|usage)\s+limits?\b|\b(rate|usage)\s+limits?\b.{0,40}\b(have been\s+)?reset\b/i.test(
-      text,
-    );
   const hasWindow =
     /5-hour|5 hour|5h|weekly/i.test(text) ||
     /rate limits?|usage limits?/i.test(text);

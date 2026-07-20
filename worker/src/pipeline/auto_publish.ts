@@ -166,20 +166,41 @@ function claudeStrongHit(text: string): string | null {
   return null;
 }
 
-/** Partial / non-global — never auto-green as all-users hard reset. */
-function isClaudePartialOrPromo(text: string): boolean {
+/** True hard-reset past verb (not "raised" / "increasing"). */
+export function hasClaudeResetVerb(text: string): boolean {
+  return /\b(we've|we have|we)\s+(just\s+)?reset\b|\breset\b.{0,40}\b(rate|usage)\s+limits?\b|\b(rate|usage)\s+limits?\b.{0,40}\b(have been\s+)?reset\b|\bgone ahead and reset\b/i.test(
+    text,
+  );
+}
+
+/**
+ * Partial / promo / API raise — never auto-green (rules or LLM).
+ * Raise/promo only when there is no hard-reset verb (avoid false quiet on
+ * "we reset … Last month we raised").
+ */
+export function isClaudePartialOrPromo(text: string): boolean {
   if (/\beveryone affected\b|\baffected users?\b|\baffected only\b/i.test(text)) {
     return true;
   }
+  if (hasClaudeResetVerb(text)) return false;
   if (
-    /\braised\b.*\brate limits?\b|\brate limits?\b.*\braised\b/i.test(text) ||
-    /\bincreasing\b.*\blimits?\b|\bkeeping\b.{0,40}\bhigher\b|\b50%\s*higher\b/i.test(
+    /\braised\b.{0,60}\brate limits?\b|\brate limits?\b.{0,60}\braised\b/i.test(
+      text,
+    ) ||
+    /\bincreasing\b.{0,40}\blimits?\b|\bkeeping\b.{0,40}\bhigher\b|\b50%\s*higher\b/i.test(
       text,
     )
   ) {
     return true;
   }
   return false;
+}
+
+/** Claude global scope — stricter than Codex (no bare "we've reset" / "for all"). */
+export function hasClaudeGlobalScopeSignal(text: string): boolean {
+  return /all users|everyone|all plans|across all|pro and max|pro & max|subscribers|for all users|for all subscribers|for all plans|for all claude/i.test(
+    text,
+  );
 }
 
 function isQuestionTeaser(text: string): boolean {
@@ -286,12 +307,7 @@ export function shouldAutoPublish(cand: EventCandidate): AutoGateResult {
     if (!hasUsagePhraseFloor(text)) {
       return { ok: false, reason: "no_phrase_floor" };
     }
-    // Stricter than Codex hasGlobalScopeSignal: no bare "we've reset" as scope
-    const claudeScope =
-      /all users|everyone|all plans|across all|pro and max|pro & max|subscribers|\bfor all\b/i.test(
-        text,
-      );
-    if (!claudeScope) {
+    if (!hasClaudeGlobalScopeSignal(text)) {
       return { ok: false, reason: "no_scope_signal" };
     }
     const proMax =
