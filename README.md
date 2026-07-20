@@ -23,7 +23,7 @@
 | Claude 臂 | soft classify → strong + floor + all-users scope；擋 API raise / promo / partial |
 | Banked | 可確認並顯示 `active_banked`（琥珀），**不**當「公開 RESET 進行中」綠燈 |
 | 歷史 / stats | corpus seed；`last_reset_at` / 間隔 / drought = **hard_reset only** |
-| UI | NOW / LAST / **NEXT 48h 啟發式**；i18n zh-Hant/Hans/ja/en；品牌 logo |
+| UI | **Verdict-first** 主控台：巨大裁決 + 來源健康徽章 + 等寬「Xd ago」+ 節奏 sparkline；卡片等高不裁切；48h 啟發式降級為中性；i18n zh-Hant/Hans/ja/en；品牌 logo |
 | 48h 預測 | 自家 hard 間隔 scorer；永不 notify、永不改綠燈 |
 | Admin | 緊急 retract / 手動 pipeline；production 需 `X-Admin-Token` |
 | 狀態 | SoT = **MemoryStore + KV**；D1 binding **預留未用** |
