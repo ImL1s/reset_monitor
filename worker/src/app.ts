@@ -594,14 +594,41 @@ export function createApp() {
       })
       .join("");
     const body = `<h1>Public reset history — Codex &amp; Claude</h1>
-<p>Every confirmed public usage-limit reset we have observed, newest first, with a link to the source announcement. Last updated ${escapeHtml(now.toISOString())}.</p>
+<p>Every confirmed public usage-limit reset we have observed, newest first, with a link to the source announcement. Last updated ${escapeHtml(now.toISOString())}. Machine-readable: <a href="https://reset-radar.taiwan-traffic.workers.dev/v1/events?limit=100" rel="nofollow">/v1/events JSON</a>.</p>
 ${sections}`;
+    // Dataset schema — lets AI answer engines treat this as a citable data source.
+    const datasetLd = {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      name: "Codex & Claude public usage-limit reset history",
+      description:
+        "Dated log of confirmed public (staff-announced, provider-wide) usage-limit resets for OpenAI Codex / ChatGPT Work and Anthropic Claude, with source links and interval statistics.",
+      url: `${SEO_ORIGIN}/history`,
+      creator: { "@type": "Organization", name: "RESET Radar" },
+      isAccessibleForFree: true,
+      keywords: [
+        "Codex usage limit reset",
+        "Claude usage limit reset",
+        "ChatGPT Work usage reset",
+        "AI coding usage reset history",
+      ],
+      dateModified: now.toISOString(),
+      distribution: [
+        {
+          "@type": "DataDownload",
+          encodingFormat: "application/json",
+          contentUrl:
+            "https://reset-radar.taiwan-traffic.workers.dev/v1/events?limit=100",
+        },
+      ],
+    };
     return c.html(
       seoShell({
         path: "/history",
         title: "Codex & Claude public reset history + stats",
         desc: "Dated log of every observed Codex and Claude public usage-limit reset, with source links and interval stats (average interval, last reset, longest gap).",
         body,
+        jsonLd: datasetLd,
       }),
       200,
       HTML_SECURITY_HEADERS,
