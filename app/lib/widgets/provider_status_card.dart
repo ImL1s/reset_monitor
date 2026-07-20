@@ -29,6 +29,18 @@ class _ProviderStatusCardState extends State<ProviderStatusCard> {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  /// Human "how long ago" for last public reset (like codex-resets).
+  String _agoLabel(String iso) {
+    final t = DateTime.tryParse(iso)?.toLocal();
+    if (t == null) return iso;
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 60) return '${d.inMinutes}m ago';
+    if (d.inHours < 48) return '${d.inHours}h ago';
+    final days = d.inHours / 24.0;
+    if (days < 10) return '${days.toStringAsFixed(1)}d ago';
+    return '${days.round()}d ago';
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = widget.data;
@@ -196,9 +208,18 @@ class _ProviderStatusCardState extends State<ProviderStatusCard> {
                     ] else if (data.lastConfirmedEvent != null) ...[
                       const SizedBox(height: 14),
                       Text(
-                        'Last public reset',
+                        'LAST reset (when)',
                         style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               color: RadarColors.muted,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _agoLabel(data.lastConfirmedEvent!.announcedAt),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              color: RadarColors.text,
+                              fontWeight: FontWeight.w800,
                             ),
                       ),
                       const SizedBox(height: 4),
@@ -206,19 +227,13 @@ class _ProviderStatusCardState extends State<ProviderStatusCard> {
                         data.lastConfirmedEvent!.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: RadarColors.text,
                             ),
                       ),
                       Text(
                         formatRadarTime(data.lastConfirmedEvent!.announcedAt),
                         style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                      Text(
-                        'Last blessing ≠ still green after the window ends',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: RadarColors.muted,
-                            ),
                       ),
                     ],
                     if (data.pendingDetection != null) ...[

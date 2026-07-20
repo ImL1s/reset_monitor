@@ -214,8 +214,21 @@ class _HeroHeader extends StatelessWidget {
         .where((p) => p.displayStatus == 'detected_pending')
         .length;
     final monitored = providers.where((p) => p.monitored).length;
+    final hasNow = confirmed > 0;
+
+    final codexStats = stats?.providers
+            .where((p) => p.provider == 'codex')
+            .firstOrNull ??
+        stats?.overall;
+    final days = codexStats?.daysSinceLast;
+    final lastAgo = days == null
+        ? '—'
+        : days < 1
+            ? '${(days * 24).round()}h ago'
+            : '${days.toStringAsFixed(days < 10 ? 1 : 0)}d ago';
 
     final isWide = MediaQuery.sizeOf(context).width >= 600;
+    final nowColor = hasNow ? RadarColors.accent : RadarColors.muted;
 
     return Container(
       padding: EdgeInsets.all(isWide ? 24 : 18),
@@ -227,7 +240,7 @@ class _HeroHeader extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             RadarColors.elevated,
-            RadarColors.accent.withValues(alpha: 0.08),
+            nowColor.withValues(alpha: 0.08),
             RadarColors.bg,
           ],
         ),
@@ -235,63 +248,83 @@ class _HeroHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: RadarColors.accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: RadarColors.accent.withValues(alpha: 0.3),
-                  ),
+          Text(
+            'Public RESET radar · not your personal quota',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: RadarColors.muted,
                 ),
-                child: const Icon(
-                  Icons.radar_rounded,
-                  color: RadarColors.accent,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Is there a public usage RESET?',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Fully automatic scan of staff/public posts. '
-                      'Green = confirmed. Amber = detected, not confirmed yet. '
-                      'Not your personal quota.',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
+          Text(
+            '1. 現在有沒有 RESET？',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: RadarColors.muted,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            hasNow
+                ? '有 — $confirmed 個來源仍在公開確認窗內'
+                : '沒有 — 現在沒有進行中的公開 RESET',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: nowColor,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '2. 上次公開 RESET 是多久？',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: RadarColors.muted,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            days == null ? '尚無已確認的公開 RESET' : '上次：$lastAgo',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: RadarColors.text,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          if (codexStats?.lastResetAt != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Codex last: ${formatRadarTime(codexStats!.lastResetAt!)}',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            '「上次」是官方公開公告時間（像 codex-resets 的 2 days ago）。'
+            '灰/「沒有」= 確認窗已過，不是壞掉。綠燈只在約 24 小時窗內。',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
               _StatChip(
-                icon: Icons.bolt_rounded,
-                label: '$confirmed confirmed now',
-                color: RadarColors.accent,
+                icon: hasNow
+                    ? Icons.check_circle_rounded
+                    : Icons.remove_circle_outline,
+                label: hasNow ? '現在：有' : '現在：沒有',
+                color: nowColor,
               ),
               _StatChip(
-                icon: Icons.hourglass_top_rounded,
-                label: '$pending awaiting confirm (not green)',
-                color: RadarColors.warning,
+                icon: Icons.history_rounded,
+                label: '上次：$lastAgo',
+                color: RadarColors.info,
               ),
+              if (pending > 0)
+                _StatChip(
+                  icon: Icons.hourglass_top_rounded,
+                  label: '$pending 弱訊號（不算 RESET）',
+                  color: RadarColors.warning,
+                ),
               _StatChip(
                 icon: Icons.sensors_rounded,
-                label: '$monitored sources watched',
+                label: '監控 $monitored 源',
                 color: RadarColors.info,
               ),
               if (snapshot != null)
@@ -304,12 +337,8 @@ class _HeroHeader extends StatelessWidget {
           ),
           if (stats != null) ...[
             const SizedBox(height: 16),
-            // Codex-scoped clock when comparing to codex-resets; else overall
             StatsHeader(
-              stats: stats!.providers
-                      .where((p) => p.provider == 'codex')
-                      .firstOrNull ??
-                  stats!.overall,
+              stats: codexStats ?? stats!.overall,
               monitor: monitor,
             ),
           ],
@@ -394,10 +423,9 @@ class _StatusLegend extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Green = confirmed and still in the display window. '
-            'Amber = signal only — never a RESET. '
-            'We count a stricter Codex set than pure archives (teasers omitted). '
-            'Last public reset ≠ still green.',
+            '現在：有/沒有 = 確認窗內是否還有公開 RESET。'
+            '上次 = 距離最近一次官方公告多久（窗過了仍會顯示）。'
+            '灰 ≠ 壞掉。琥珀 = 弱訊號，不要當成 RESET。',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: RadarColors.muted,
                 ),

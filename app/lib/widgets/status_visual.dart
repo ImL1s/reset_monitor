@@ -17,25 +17,25 @@ class StatusVisual {
     switch (status) {
       case 'active_confirmed':
         return StatusVisual(
-          label: 'Confirmed public RESET',
+          label: 'NOW: YES · public RESET',
           color: RadarColors.accent,
           icon: Icons.check_circle_rounded,
         );
       case 'active_confirmed_degraded':
         return StatusVisual(
-          label: 'Confirmed · feed delayed',
+          label: 'NOW: YES · feed lag',
           color: const Color(0xFFA3E635),
           icon: Icons.warning_amber_rounded,
         );
       case 'detected_pending':
         return StatusVisual(
-          label: 'Signal only · not a RESET',
+          label: 'NOW: NO · weak signal only',
           color: RadarColors.warning,
           icon: Icons.hourglass_top_rounded,
         );
       case 'no_recent_confirmed':
         return StatusVisual(
-          label: 'No active public RESET window',
+          label: 'NOW: NO',
           color: RadarColors.muted,
           icon: Icons.remove_circle_outline_rounded,
         );
