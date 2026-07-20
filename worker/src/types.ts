@@ -117,6 +117,27 @@ export interface ProviderRuntimeMeta {
   last_operator_heartbeat_at?: string | null;
 }
 
+export type ForecastBand = "low" | "medium" | "high" | "insufficient_data";
+
+export interface ForecastFactorDto {
+  id: string; // baseline | elapsed | cooldown | future_promise | floor | freshness
+  label: string; // 繁中固定字串
+  delta: number; // 整數百分點貢獻，可負
+}
+
+export interface Next48hForecastDto {
+  window_hours: 48;
+  /** 0–100 integer; null when insufficient_data */
+  probability: number | null;
+  band: ForecastBand;
+  factors: ForecastFactorDto[];
+  calculated_at: string; // ISO
+  method: "deterministic_v1";
+  disclaimer: string; // 固定：啟發式，非官方、非確認
+  /** optional evidence for future_promise */
+  evidence_urls?: string[];
+}
+
 export interface ProviderSnapshotCard {
   provider: ProviderId;
   display_name: string;
@@ -134,6 +155,8 @@ export interface ProviderSnapshotCard {
   active_event: PublicEvent | null;
   last_confirmed_event: PublicEvent | null;
   pending_detection: PendingDetection | null;
+  /** Heuristic next-48h hard-reset forecast; null when not_monitored */
+  next_48h?: Next48hForecastDto | null;
 }
 
 export interface PublicEvent {
