@@ -272,6 +272,10 @@ class _ProviderStatusCardState extends State<ProviderStatusCard> {
                         ),
                       ),
                     ],
+                    if (data.next48h != null) ...[
+                      const SizedBox(height: 14),
+                      _Next48hBlock(forecast: data.next48h!, compact: compact),
+                    ],
                     const Spacer(),
                     const SizedBox(height: 12),
                     const Divider(height: 1),
@@ -302,6 +306,81 @@ class _ProviderStatusCardState extends State<ProviderStatusCard> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _Next48hBlock extends StatelessWidget {
+  const _Next48hBlock({required this.forecast, required this.compact});
+
+  final Next48hForecast forecast;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final insufficient = forecast.band == 'insufficient_data';
+    final headline = insufficient
+        ? '資料不足（硬重置樣本 < 2）'
+        : '${forecast.bandLabelZh} · 約 ${forecast.probability}%';
+    final factorLine = forecast.factors
+        .where((f) => f.delta != 0)
+        .take(compact ? 2 : 4)
+        .map((f) {
+          final sign = f.delta > 0 ? '+' : '';
+          return '${f.label} $sign${f.delta}';
+        })
+        .join(' · ');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: RadarColors.elevated.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: RadarColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'NEXT 48h（啟發式）',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: RadarColors.muted,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            headline,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: RadarColors.warning,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          if (factorLine.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              factorLine,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: RadarColors.muted,
+                  ),
+            ),
+          ],
+          const SizedBox(height: 4),
+          Text(
+            forecast.disclaimer.isNotEmpty
+                ? forecast.disclaimer
+                : '啟發式估計，非官方、非確認。',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: RadarColors.muted,
+                ),
+          ),
+        ],
       ),
     );
   }

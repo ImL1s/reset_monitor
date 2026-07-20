@@ -22,7 +22,8 @@
 | 假綠防護 | teaser / incoming / 否定句 reject；**規則與 LLM 皆需 usage 片語 floor + scope**；口頭禪 alone 不綠；seed 不延長 TTL |
 | Claude 臂 | soft classify 進 pending → `CLAUDE_STRONG` + floor + all-users scope；擋 API raise / promo / partial affected |
 | 歷史 | corpus seed + `/v1/stats`（以 `effective_at` 算 avg / drought，避免 re-import 失真） |
-| UI | 首屏說明綠/琥珀；Pending = Detected · not confirmed；About 與 free-auto 對齊 |
+| UI | 首屏 NOW / LAST；卡片 **NEXT 48h 啟發式**（非綠燈）；Pending = 未確認 |
+| 48h 預測 | 僅用**自家** hard_reset 間隔（baseline/elapsed/cooldown ± 明示承諾）；不刮競品；永不 notify |
 | Admin | 僅緊急 retract / pipeline；production 需 `ADMIN_TOKEN` |
 | TG | 可選；缺 secrets 不標 sent；設好後**同一次** drain 可送出 |
 

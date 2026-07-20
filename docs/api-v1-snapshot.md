@@ -182,6 +182,31 @@ else → no_recent_confirmed
 
 **可 null：** heartbeat/ingest 時間、`stale_reason`、`authority_hint`、`coverage_note`；三個 nested 無資料時為 `null`
 
+**可選 additive（schema_version 仍 1）：** `next_48h` — 未來 48h hard-reset **啟發式**（第三軸；**永不**改變 `display_status`、**永不**觸發通知）
+
+```json
+{
+  "window_hours": 48,
+  "probability": 12,
+  "band": "low",
+  "factors": [
+    { "id": "baseline", "label": "歷史基線", "delta": 12 },
+    { "id": "elapsed", "label": "距上次硬重置", "delta": 0 },
+    { "id": "cooldown", "label": "重置後冷卻", "delta": -15 }
+  ],
+  "calculated_at": "2026-07-20T12:00:00.000Z",
+  "method": "deterministic_v1",
+  "disclaimer": "啟發式估計，非官方、非確認。綠燈只代表已確認公開 hard reset。"
+}
+```
+
+| 規則 | 說明 |
+|------|------|
+| 輸入 | 僅**本站**已確認 `hard_reset`（`effective_at`）；可選 pending 明示未來承諾 |
+| `band` | `low` / `medium` / `high` / `insufficient_data`（hard 樣本 &lt; 2 → probability null） |
+| `not_monitored` | `next_48h` 為 `null` |
+| 禁止 | 刮競品 API、個人額度、與綠燈聯動 |
+
 **PublicEvent（active 與 last_confirmed 同一完整 DTO）：**  
 必填：`id`, `type`, `scope`, `title`, `source_url`, `source_post_id`, `authority_grade`, `confidence`, `effective_at`, `display_until`, `verified_at`, `retracted`  
 可 null：`scope_detail`, `body_excerpt`, `source_author`, `claim_url`, `claim_note`

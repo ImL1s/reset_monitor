@@ -4,6 +4,7 @@ import {
   FORECAST_DISCLAIMER,
   FORECAST_WINDOW_HOURS,
   computeNext48hForecast,
+  detectExplicitFuturePromise,
 } from "../src/pipeline/forecast.js";
 
 const MS_PER_DAY = 86_400_000;
@@ -164,5 +165,54 @@ describe("computeNext48hForecast", () => {
     });
     assert.equal(r.band, "insufficient_data");
     assert.equal(r.probability, null);
+  });
+
+  it("C5: futurePromise raises probability and includes factor", () => {
+    const base = computeNext48hForecast({
+      hardEvents: [...HARD_EVENTS_C1],
+      now: new Date("2026-07-20T12:00:00.000Z"),
+      sourceHealth: "fresh",
+    });
+    const withPromise = computeNext48hForecast({
+      hardEvents: [...HARD_EVENTS_C1],
+      now: new Date("2026-07-20T12:00:00.000Z"),
+      sourceHealth: "fresh",
+      futurePromise: true,
+      promiseEvidenceUrls: ["https://x.com/thsottiaux/status/1"],
+    });
+    assert.ok(base.probability !== null && withPromise.probability !== null);
+    assert.ok(withPromise.probability! > base.probability!);
+    assert.ok(withPromise.factors.some((f) => f.id === "future_promise"));
+    assert.deepEqual(withPromise.evidence_urls, [
+      "https://x.com/thsottiaux/status/1",
+    ]);
+  });
+});
+
+describe("detectExplicitFuturePromise", () => {
+  it("hits known promise phrases", () => {
+    assert.equal(
+      detectExplicitFuturePromise("Don't mind! The resets will continue"),
+      true,
+    );
+    assert.equal(
+      detectExplicitFuturePromise("we will reset again soon"),
+      true,
+    );
+    assert.equal(detectExplicitFuturePromise("會再重置給大家"), true);
+  });
+
+  it("rejects teasers and negation", () => {
+    assert.equal(
+      detectExplicitFuturePromise(
+        "Should we reset the ChatGPT Work and Codex usage again?",
+      ),
+      false,
+    );
+    assert.equal(
+      detectExplicitFuturePromise("we will not reset today"),
+      false,
+    );
+    assert.equal(detectExplicitFuturePromise("random chatter"), false);
   });
 });

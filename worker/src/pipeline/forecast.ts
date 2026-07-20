@@ -5,7 +5,7 @@ import type {
   SourceHealth,
 } from "../types.js";
 
-export const FORECAST_WINDOW_HOURS = 48;
+export const FORECAST_WINDOW_HOURS = 48 as const;
 export const FORECAST_FLOOR = 5;
 export const FORECAST_CAP = 85;
 /** hours after last hard reset with strong negative cooldown */
@@ -45,6 +45,36 @@ export interface ComputeNext48hForecastArgs {
   sourceHealth?: SourceHealth;
   /** Task 4: explicit future-promise signal; default false */
   futurePromise?: boolean;
+  /** Evidence URLs when futurePromise is true (e.g. pending source_url) */
+  promiseEvidenceUrls?: string[];
+}
+
+/**
+ * Rules-only: explicit staff promise of a future hard reset.
+ * Adds forecast weight only — never confirms display green.
+ */
+export function detectExplicitFuturePromise(text: string): boolean {
+  const t = text.toLowerCase().replace(/[\u2018\u2019\u201b]/g, "'");
+  // Hard exclude question teasers / pure negation
+  if (/\bshould we reset\b/.test(t)) return false;
+  if (/\b(will not|won't|wont)\s+reset\b/.test(t)) return false;
+  if (t.includes("resets will continue")) return true;
+  if (
+    /\bwill\s+(be\s+)?reset(ting)?\b/.test(t) &&
+    /\b(soon|again|later|today|tomorrow|shortly|in a bit|next hour|next few)\b/.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/\banother reset\b/.test(t) && /\b(coming|soon|again)\b/.test(t)) {
+    return true;
+  }
+  // zh
+  if (t.includes("會再重置") || t.includes("即將重置") || t.includes("还会重置") || t.includes("還會重置")) {
+    return true;
+  }
+  return false;
 }
 
 function clamp(lo: number, hi: number, x: number): number {
@@ -185,7 +215,7 @@ export function computeNext48hForecast(
     deltaFresh;
   const probability = clamp(FORECAST_FLOOR, FORECAST_CAP, raw);
 
-  return {
+  const out: Next48hForecastDto = {
     window_hours: FORECAST_WINDOW_HOURS,
     probability,
     band: bandFor(probability),
@@ -194,4 +224,8 @@ export function computeNext48hForecast(
     method: "deterministic_v1",
     disclaimer: FORECAST_DISCLAIMER,
   };
+  if (deltaPromise !== 0 && args.promiseEvidenceUrls?.length) {
+    out.evidence_urls = args.promiseEvidenceUrls;
+  }
+  return out;
 }

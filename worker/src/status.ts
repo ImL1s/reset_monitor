@@ -10,6 +10,10 @@ import {
   PublishedEvent,
   SourceHealth,
 } from "./types.js";
+import {
+  computeNext48hForecast,
+  detectExplicitFuturePromise,
+} from "./pipeline/forecast.js";
 
 export function nowIso(now: Date = new Date()): string {
   return now.toISOString();
@@ -216,6 +220,29 @@ export function buildProviderCard(args: {
     everConfirmed: args.events.length > 0,
   });
 
+  // Third axis: NEXT 48h heuristic only — never affects display_status / notify
+  let next_48h: ProviderSnapshotCard["next_48h"] = null;
+  if (args.config.monitored) {
+    const hard = nonRetracted.filter((e) => e.type === "hard_reset");
+    const promiseText = pendingLive?.raw_text ?? "";
+    const futurePromise = promiseText
+      ? detectExplicitFuturePromise(promiseText)
+      : false;
+    next_48h = computeNext48hForecast({
+      hardEvents: hard.map((e) => ({
+        effective_at: e.effective_at || e.verified_at,
+        type: e.type,
+      })),
+      now,
+      sourceHealth: health,
+      futurePromise,
+      promiseEvidenceUrls:
+        futurePromise && pendingLive?.source_url
+          ? [pendingLive.source_url]
+          : undefined,
+    });
+  }
+
   return {
     provider: args.config.id,
     display_name: args.config.display_name,
@@ -242,6 +269,7 @@ export function buildProviderCard(args: {
             message: "偵測到候選（自動規則未達綠燈門檻）",
           }
         : null,
+    next_48h,
   };
 }
 

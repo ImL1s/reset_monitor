@@ -96,7 +96,7 @@ void main() {
     );
     expect(
       StatusVisual.forStatus('not_monitored').label,
-      'Not monitored',
+      'Not covered',
     );
     expect(formatRadarTime(''), '—');
     expect(formatRadarTime('2026-07-20T12:00:00.000Z').length, greaterThan(8));

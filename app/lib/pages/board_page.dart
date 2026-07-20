@@ -286,6 +286,21 @@ class _HeroHeader extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
           ),
+          const SizedBox(height: 16),
+          Text(
+            '3. 未來 48h 會不會再重置？',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: RadarColors.muted,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '啟發式統計（非確認、非綠燈）— 見各卡片 NEXT 48h',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: RadarColors.warning,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
           if (codexStats?.lastResetAt != null) ...[
             const SizedBox(height: 4),
             Text(

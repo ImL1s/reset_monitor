@@ -22,6 +22,88 @@ class SnapshotResponse {
   }
 }
 
+class ForecastFactor {
+  ForecastFactor({
+    required this.id,
+    required this.label,
+    required this.delta,
+  });
+
+  final String id;
+  final String label;
+  final int delta;
+
+  factory ForecastFactor.fromJson(Map<String, dynamic> json) => ForecastFactor(
+        id: json['id'] as String? ?? '',
+        label: json['label'] as String? ?? '',
+        delta: (json['delta'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// Server heuristic only — never a green confirmation.
+class Next48hForecast {
+  Next48hForecast({
+    required this.windowHours,
+    required this.band,
+    required this.factors,
+    required this.calculatedAt,
+    required this.method,
+    required this.disclaimer,
+    this.probability,
+    this.evidenceUrls,
+  });
+
+  final int windowHours;
+  final int? probability;
+  final String band;
+  final List<ForecastFactor> factors;
+  final String calculatedAt;
+  final String method;
+  final String disclaimer;
+  final List<String>? evidenceUrls;
+
+  factory Next48hForecast.fromJson(Map<String, dynamic> json) {
+    final rawFactors = (json['factors'] as List? ?? []).cast<dynamic>();
+    final factors = rawFactors
+        .whereType<Map<String, dynamic>>()
+        .map(ForecastFactor.fromJson)
+        .toList();
+    final urls = (json['evidence_urls'] as List?)
+        ?.map((e) => e.toString())
+        .toList();
+    return Next48hForecast(
+      windowHours: (json['window_hours'] as num?)?.toInt() ?? 48,
+      probability: (json['probability'] as num?)?.toInt(),
+      band: json['band'] as String? ?? 'insufficient_data',
+      factors: factors,
+      calculatedAt: json['calculated_at'] as String? ?? '',
+      method: json['method'] as String? ?? 'deterministic_v1',
+      disclaimer: json['disclaimer'] as String? ?? '',
+      evidenceUrls: urls,
+    );
+  }
+
+  static Next48hForecast? tryParse(Map<String, dynamic>? json) {
+    if (json == null) return null;
+    return Next48hForecast.fromJson(json);
+  }
+
+  String get bandLabelZh {
+    switch (band) {
+      case 'low':
+        return '低';
+      case 'medium':
+        return '中';
+      case 'high':
+        return '高';
+      case 'insufficient_data':
+        return '資料不足';
+      default:
+        return band;
+    }
+  }
+}
+
 class ProviderCardData {
   ProviderCardData({
     required this.provider,
@@ -38,6 +120,7 @@ class ProviderCardData {
     this.activeEvent,
     this.lastConfirmedEvent,
     this.pendingDetection,
+    this.next48h,
   });
 
   final String provider;
@@ -54,6 +137,7 @@ class ProviderCardData {
   final EventData? activeEvent;
   final EventData? lastConfirmedEvent;
   final PendingDetection? pendingDetection;
+  final Next48hForecast? next48h;
 
   factory ProviderCardData.fromJson(Map<String, dynamic> json) {
     Map<String, dynamic>? asMap(dynamic v) =>
@@ -73,6 +157,7 @@ class ProviderCardData {
       activeEvent: EventData.tryParse(asMap(json['active_event'])),
       lastConfirmedEvent: EventData.tryParse(asMap(json['last_confirmed_event'])),
       pendingDetection: PendingDetection.tryParse(asMap(json['pending_detection'])),
+      next48h: Next48hForecast.tryParse(asMap(json['next_48h'])),
     );
   }
 }

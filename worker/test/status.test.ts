@@ -255,6 +255,87 @@ describe("deriveDisplayStatus", () => {
     assert.notEqual(r.display, "no_recent_confirmed");
     assert.equal(r.display, "source_unhealthy");
   });
+
+  it("attaches next_48h heuristic without changing display_status green rules", () => {
+    const older: PublishedEvent = {
+      ...baseEvent,
+      id: "old",
+      type: "hard_reset",
+      source_post_id: "1",
+      effective_at: "2026-07-01T00:00:00.000Z",
+      verified_at: "2026-07-01T00:00:00.000Z",
+      display_until: "2026-07-02T00:00:00.000Z",
+    };
+    const newer: PublishedEvent = {
+      ...baseEvent,
+      id: "new",
+      type: "hard_reset",
+      source_post_id: "2078320950488297917",
+      title: "Oops hard reset",
+      effective_at: "2026-07-18T03:28:22.000Z",
+      verified_at: "2026-07-18T03:28:22.000Z",
+      display_until: "2026-07-19T03:28:22.000Z",
+    };
+    const card = buildProviderCard({
+      config: {
+        id: "codex",
+        display_name: "Codex",
+        monitored: true,
+        authority_hint: "staff",
+      },
+      meta: { last_operator_heartbeat_at: new Date().toISOString() },
+      events: [older, newer],
+      pending: null,
+      now: new Date("2026-07-20T12:00:00.000Z"),
+    });
+    assert.equal(card.display_status, "no_recent_confirmed");
+    assert.ok(card.next_48h);
+    assert.equal(card.next_48h!.window_hours, 48);
+    assert.equal(card.next_48h!.method, "deterministic_v1");
+    assert.notEqual(card.next_48h!.band, "insufficient_data");
+    assert.equal(typeof card.next_48h!.probability, "number");
+  });
+
+  it("next_48h insufficient_data when fewer than 2 hard resets", () => {
+    const onlyOne: PublishedEvent = {
+      ...baseEvent,
+      type: "hard_reset",
+      effective_at: "2026-07-16T03:58:48.000Z",
+      verified_at: "2026-07-16T03:58:48.000Z",
+      display_until: "2026-07-17T03:58:48.000Z",
+    };
+    const card = buildProviderCard({
+      config: {
+        id: "claude",
+        display_name: "Claude",
+        monitored: true,
+      },
+      meta: { last_operator_heartbeat_at: new Date().toISOString() },
+      events: [onlyOne],
+      pending: null,
+      now: new Date("2026-07-20T12:00:00.000Z"),
+    });
+    assert.ok(card.next_48h);
+    assert.equal(card.next_48h!.band, "insufficient_data");
+    assert.equal(card.next_48h!.probability, null);
+  });
+
+  it("not_monitored providers get next_48h null", () => {
+    const card = buildProviderCard({
+      config: {
+        id: "grok",
+        display_name: "Grok",
+        monitored: false,
+        coverage_note: "not yet",
+      },
+      meta: {},
+      events: [],
+      pending: null,
+      now: new Date("2026-07-20T12:00:00.000Z"),
+    });
+    assert.equal(card.display_status, "not_monitored");
+    assert.equal(card.next_48h, null);
+  });
 });
 
 describe("isActiveEvent", () => {

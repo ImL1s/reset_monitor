@@ -22,7 +22,9 @@ class AboutPage extends StatelessWidget {
         Text(
           'RESET Radar tracks publicly announced AI coding usage hard resets '
           '(for example Codex staff posts and ClaudeDevs announcements). '
-          'It does not log into your AI accounts.',
+          'It does not log into your AI accounts. '
+          'NEXT 48h on each card is a heuristic from confirmed hard-reset history only — '
+          'not official, not a green confirmation.',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
         const SizedBox(height: 24),
