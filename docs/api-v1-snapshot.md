@@ -33,7 +33,19 @@
 
 ## `GET /v1/monitor`
 
-公開監控模式（無 secrets）：`mode`, `source`, `auto_publish`, `monitoring_enabled`, `last_run`.
+公開監控模式（無 secrets）。
+
+| 欄位 | 說明 |
+|------|------|
+| `mode` | `free_auto` |
+| `source` | last poll adapters（如 `fxtwitter_v2` 或 `fxtwitter_v2+dayclaw_public`） |
+| `auto_publish` | bool |
+| `monitoring_enabled` | bool |
+| `llm_gate_mode` | 如 `opencode_free_then_go` |
+| `last_run` | `{ ran_at, source, accounts[] }` |
+
+綠燈路徑：strict templates → optional LLM（free then Go）。  
+infra 失敗不永久 reject（soft pending / requeue）。
 
 ## `GET /v1/snapshot`
 

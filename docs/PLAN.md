@@ -38,11 +38,12 @@
 Cron */10 (free-auto)
   → FxTwitter v2 timeline (primary) | Dayclaw public items (fallback)
   → RawSourceRecord + EventCandidate
-  → AutoPublishGate (strict templates; optional LLM_GATE_*)
-  → PublishedEvent (decision_by=auto_rules)
-  → ProviderSnapshot + /v1/stats + /v1/events
-  → Flutter Web Board + Telegram (when secrets set)
-Admin: emergency retract / kill only
+  → AutoPublishGate (strict templates)
+       fail → OpenCode Zen free LLM → infra fail only → OpenCode Go
+  → confirm | soft-pending (requeue) | hard-reject
+  → ProviderSnapshot + /v1/stats + /v1/events + /v1/monitor
+  → Flutter Web Board + Telegram outbox (KV, retry)
+Admin: emergency retract / pipeline only
 ```
 
 ---
