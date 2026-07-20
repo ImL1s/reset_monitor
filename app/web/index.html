@@ -6,14 +6,26 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="description" content="Public AI coding usage RESET radar — zero login. Track Codex, Claude, and more staff/global hard resets.">
+  <meta name="description" content="Zero-login board: has OpenAI Codex or Anthropic Claude publicly reset usage limits? Live status, time since the last public reset, and a heuristic 48h forecast — with source evidence.">
+  <link rel="canonical" href="https://reset-radar-web.pages.dev/">
   <meta name="theme-color" content="#0B1220">
   <meta name="color-scheme" content="dark">
 
   <!-- Open Graph -->
-  <meta property="og:title" content="RESET Radar">
-  <meta property="og:description" content="Zero-auth public board for AI coding tool usage hard resets.">
+  <meta property="og:title" content="RESET Radar — did Codex or Claude reset usage limits?">
+  <meta property="og:description" content="Zero-auth public board tracking Codex & Claude usage-limit resets, with a 48h forecast and source evidence.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://reset-radar-web.pages.dev/">
+  <meta property="og:site_name" content="RESET Radar">
+  <meta property="og:image" content="https://reset-radar-web.pages.dev/icons/Icon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="RESET Radar — did Codex or Claude reset usage limits?">
+  <meta name="twitter:description" content="Live zero-login board for Codex & Claude usage-limit resets, plus a 48h forecast.">
+  <meta name="twitter:image" content="https://reset-radar-web.pages.dev/icons/Icon-512.png">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -25,8 +37,51 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>RESET Radar</title>
+  <title>RESET Radar — Did Codex or Claude reset usage limits? Live tracker + 48h forecast</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Structured data: consumed by Google + AI answer engines (ChatGPT/Perplexity) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "RESET Radar",
+    "url": "https://reset-radar-web.pages.dev/",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Web",
+    "description": "Zero-login public board that tracks whether AI coding tools (OpenAI Codex, Anthropic Claude, and more) have publicly reset usage limits, with a heuristic 48h forecast and source evidence.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "isAccessibleForFree": true
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What does RESET Radar track?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Whether OpenAI Codex / ChatGPT Work and Anthropic Claude have publicly reset usage limits — the staff-announced, provider-wide 'hard resets' — plus the time since the last public reset and a heuristic 48-hour forecast, each with a link to the source announcement." }
+      },
+      {
+        "@type": "Question",
+        "name": "Is a public reset the same as my personal quota refilling?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. A confirmed public/global RESET means many paid users had usage replenished; it does not guarantee your individual account is full, and it is not your personal 5-hour or weekly rolling window." }
+      },
+      {
+        "@type": "Question",
+        "name": "How is the 48-hour forecast calculated?",
+        "acceptedAnswer": { "@type": "Answer", "text": "It is a deterministic heuristic fitted to the history of confirmed hard-reset intervals (a Weibull renewal survival model). It is not official and never a confirmation — it is a demoted, explainable estimate shown with its uncertainty range." }
+      },
+      {
+        "@type": "Question",
+        "name": "Is RESET Radar affiliated with OpenAI or Anthropic?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. RESET Radar is an independent utility and is not affiliated with OpenAI, Anthropic, xAI, Moonshot, z.ai, or Google. It only reads public announcements; it never logs into your AI accounts." }
+      }
+    ]
+  }
+  </script>
 
   <style>
     html, body {
@@ -35,7 +90,7 @@
       background-color: #0B1220;
       color: #F8FAFC;
     }
-    /* Loading splash before Flutter paints */
+    /* Loading splash + crawlable content before Flutter paints */
     .loading {
       position: fixed;
       inset: 0;
@@ -44,9 +99,14 @@
       justify-content: center;
       flex-direction: column;
       gap: 12px;
+      padding: 24px;
+      box-sizing: border-box;
       font-family: system-ui, -apple-system, sans-serif;
-      pointer-events: none;
+      text-align: center;
     }
+    .loading-seo { max-width: 640px; color: #94A3B8; font-size: 14px; line-height: 1.6; }
+    .loading-seo h1 { color: #F8FAFC; font-size: 20px; }
+    .loading-seo ul { display: inline-block; text-align: left; }
     .loading-dot {
       width: 12px;
       height: 12px;
@@ -60,10 +120,30 @@
   </style>
 </head>
 <body>
-  <div class="loading" id="loading" aria-hidden="true">
-    <img src="icons/Icon-192.png" width="56" height="56" alt="" style="border-radius:12px" />
-    <div style="color:#94A3B8;font-size:14px;">RESET Radar</div>
+  <!-- Real, crawlable content (Google + AI fetchers that don't run JS). Removed once Flutter paints. -->
+  <div class="loading" id="loading">
+    <img src="icons/Icon-192.png" width="56" height="56" alt="RESET Radar" style="border-radius:12px" />
+    <main class="loading-seo">
+      <h1>RESET Radar — has your AI coding tool reset its usage limits?</h1>
+      <p>RESET Radar is a zero-login public board that tracks when <strong>OpenAI Codex / ChatGPT Work</strong>
+         and <strong>Anthropic Claude</strong> publicly reset usage limits (staff-announced, provider-wide
+         "hard resets"), plus the time since the last public reset and a heuristic 48-hour forecast — each with
+         a link to the source announcement.</p>
+      <h2>What it tracks</h2>
+      <ul>
+        <li>Codex / ChatGPT Work usage-limit reset status</li>
+        <li>Claude usage-limit reset status</li>
+        <li>Time since the last public reset, and a 48-hour forecast with an uncertainty range</li>
+      </ul>
+      <p><small>Independent utility. Not affiliated with OpenAI, Anthropic, xAI, Moonshot, z.ai, or Google.
+         A confirmed global reset does not guarantee your personal quota is full.</small></p>
+    </main>
   </div>
+  <noscript>
+    <h1>RESET Radar</h1>
+    <p>Zero-login board tracking public usage-limit resets for OpenAI Codex and Anthropic Claude,
+       with a 48-hour forecast. JavaScript is required for the live board.</p>
+  </noscript>
   <script>
     window.addEventListener('flutter-first-frame', function () {
       var el = document.getElementById('loading');
