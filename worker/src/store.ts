@@ -136,10 +136,11 @@ export class MemoryStore {
   }
 
   allEventsSorted(): PublishedEvent[] {
-    return [...this.events.values()].sort(
-      (a, b) =>
-        new Date(b.verified_at).getTime() - new Date(a.verified_at).getTime(),
-    );
+    return [...this.events.values()].sort((a, b) => {
+      const ta = new Date(a.effective_at || a.verified_at).getTime();
+      const tb = new Date(b.effective_at || b.verified_at).getTime();
+      return tb - ta;
+    });
   }
 
   ingest(input: {

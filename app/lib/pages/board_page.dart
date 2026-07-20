@@ -304,7 +304,14 @@ class _HeroHeader extends StatelessWidget {
           ),
           if (stats != null) ...[
             const SizedBox(height: 16),
-            StatsHeader(stats: stats!.overall, monitor: monitor),
+            // Codex-scoped clock when comparing to codex-resets; else overall
+            StatsHeader(
+              stats: stats!.providers
+                      .where((p) => p.provider == 'codex')
+                      .firstOrNull ??
+                  stats!.overall,
+              monitor: monitor,
+            ),
           ],
         ],
       ),
@@ -387,7 +394,10 @@ class _StatusLegend extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Green = confirmed public RESET. Amber = not a green light — do not treat as a reset.',
+            'Green = confirmed and still in the display window. '
+            'Amber = signal only — never a RESET. '
+            'We count a stricter Codex set than pure archives (teasers omitted). '
+            'Last public reset ≠ still green.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: RadarColors.muted,
                 ),

@@ -230,6 +230,10 @@ export function hasGlobalScopeSignal(text: string): boolean {
 }
 
 export function isBanked(text: string): boolean {
+  // Explicit hard-reset sentences that mention prior banked stock are still hard
+  if (/\bthis is a hard reset\b|\bhard reset given\b/i.test(text)) {
+    return false;
+  }
   return /banked reset|credit one additional reset|into your bank|into the reset bank|added a banked reset/i.test(
     text,
   );

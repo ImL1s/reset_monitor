@@ -29,13 +29,13 @@ class StatusVisual {
         );
       case 'detected_pending':
         return StatusVisual(
-          label: 'Detected · not confirmed',
+          label: 'Signal only · not a RESET',
           color: RadarColors.warning,
           icon: Icons.hourglass_top_rounded,
         );
       case 'no_recent_confirmed':
         return StatusVisual(
-          label: 'No public RESET right now',
+          label: 'No active public RESET window',
           color: RadarColors.muted,
           icon: Icons.remove_circle_outline_rounded,
         );

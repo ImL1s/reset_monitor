@@ -306,7 +306,7 @@ class _TimelineTileState extends State<_TimelineTile> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'verified ${formatRadarTime(event.verifiedAt)}',
+                            'announced ${formatRadarTime(event.announcedAt)}',
                             style: Theme.of(context).textTheme.labelSmall,
                           ),
                           if (event.sourceUrl.isNotEmpty) ...[

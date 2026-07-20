@@ -68,6 +68,43 @@ export function isActiveEvent(ev: PublishedEvent, now: Date = new Date()): boole
   return new Date(ev.display_until).getTime() > now.getTime();
 }
 
+/** Twitter/X snowflake → ms since epoch (for pending post age). */
+export function snowflakeToMs(postId: string): number | null {
+  try {
+    const id = BigInt(postId);
+    if (id <= 0n) return null;
+    return Number((id >> 22n) + 1288834974657n);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pending only surfaces when it could still matter vs last public blessing.
+ * Hides months-old teaser candidates that were re-ingested with fresh created_at.
+ */
+export function isActionablePending(
+  pending: EventCandidate | null,
+  lastConfirmed: PublishedEvent | null,
+  now: Date = new Date(),
+): boolean {
+  if (!pending || pending.status !== "pending_review") return false;
+  const postMs = snowflakeToMs(pending.post_id);
+  if (postMs != null) {
+    if (lastConfirmed) {
+      const lastEff = new Date(lastConfirmed.effective_at).getTime();
+      if (postMs < lastEff) return false;
+    }
+    // Soft cap: candidates from posts older than 21d rarely change wording
+    if (now.getTime() - postMs > 21 * 86_400_000) return false;
+  }
+  return true;
+}
+
+export function eventTimeMs(e: { effective_at?: string; verified_at: string }): number {
+  return new Date(e.effective_at || e.verified_at).getTime();
+}
+
 export function toPublicEvent(ev: PublishedEvent): PublicEvent {
   return {
     id: ev.id,
@@ -157,19 +194,24 @@ export function buildProviderCard(args: {
 
   const nonRetracted = args.events.filter((e) => !e.retracted_at);
   const active = nonRetracted.find((e) => isActiveEvent(e, now)) ?? null;
-  // Prefer last non-active confirmed for "last" so active is not duplicated
+  // Last public blessing = newest by announcement time (effective_at), not import time
   const sorted = [...nonRetracted].sort(
-    (a, b) =>
-      new Date(b.verified_at).getTime() - new Date(a.verified_at).getTime(),
+    (a, b) => eventTimeMs(b) - eventTimeMs(a),
   );
   const lastConfirmed =
-    sorted.find((e) => !active || e.id !== active.id) ?? null;
+    sorted.find((e) => !active || e.id !== active.id) ??
+    sorted[0] ??
+    null;
+
+  const pendingLive = isActionablePending(args.pending, lastConfirmed, now)
+    ? args.pending
+    : null;
 
   const { display, eventStatus } = deriveDisplayStatus({
     monitored: args.config.monitored,
     sourceHealth: health,
     activeEvent: active,
-    pending: args.pending,
+    pending: pendingLive,
     // include retracted: once confirmed, never cold_start again
     everConfirmed: args.events.length > 0,
   });
@@ -191,12 +233,12 @@ export function buildProviderCard(args: {
     active_event: active ? toPublicEvent(active) : null,
     last_confirmed_event: lastConfirmed ? toPublicEvent(lastConfirmed) : null,
     pending_detection:
-      args.pending && args.pending.status === "pending_review"
+      pendingLive && pendingLive.status === "pending_review"
         ? {
-            candidate_id: args.pending.id,
-            suggested_type: args.pending.suggested_type,
-            source_url: args.pending.source_url,
-            created_at: args.pending.created_at,
+            candidate_id: pendingLive.id,
+            suggested_type: pendingLive.suggested_type,
+            source_url: pendingLive.source_url,
+            created_at: pendingLive.created_at,
             message: "偵測到候選（自動規則未達綠燈門檻）",
           }
         : null,
@@ -211,36 +253,56 @@ export function classifyCodexText(text: string): {
   excluded: boolean;
   excludeReason?: string;
 } {
-  const lower = text.toLowerCase();
+  const lower = text.toLowerCase().replace(/[\u2018\u2019\u201b]/g, "'");
+  // Soft funnel must be ≥ CODEX_STRONG coverage so true hard posts reach gate
   const phrases = [
     "reset usage limits",
+    "reset of your usage",
+    "full reset of your usage",
     "for all paid",
     "banked reset",
     "100% weekly",
     "hard reset",
     "another reset",
+    "another usage limit reset",
+    "usage limit reset",
     "resetting the usage limits",
     "usage limits have been reset",
+    "usage limits will be fully reset",
     "oops... i did it again",
     "have reset usage limits",
     "have reset rate limits",
+    "have reset everyone's",
     "i have reset",
     "we have reset",
+    "we've reset",
     "reset rate limits",
     "reseting rate limits",
     "resetting rate limits",
+    "reseting the rate limit",
+    "resetting the rate limit",
+    "reset the rate limits",
     "rate limit reset",
+    "rate limits reset",
     "sneaky double reset",
     "reset button pressed",
     "usage reset on the house",
     "into the reset bank",
+    "into your bank",
+    "credit one additional reset",
     "added a banked reset",
     "we are once again resetting",
     "we're resetting",
+    "we are resetting",
+    "and yes we are resetting",
+    "resetting the limits",
     "reset everyone's",
     "across all paid",
     "all plans",
     "pressing the button",
+    "team will reset rate limits",
+    "will be reseting rate limits",
+    "will be resetting rate limits",
   ];
   const hits = phrases.filter((p) => lower.includes(p));
 
@@ -264,14 +326,17 @@ export function classifyCodexText(text: string): {
     };
   }
 
+  // Explicit hard reset wording wins over incidental "banked resets" mention
   const type: EventType =
-    /banked reset|into the reset bank|into your bank|added a banked reset/i.test(
-      text,
-    )
-      ? "banked_credit"
-      : "hard_reset";
+    /\bthis is a hard reset\b|\bhard reset given\b/i.test(text)
+      ? "hard_reset"
+      : /banked reset|into the reset bank|into your bank|added a banked reset|credit one additional reset/i.test(
+            text,
+          ) && !/\bhard reset\b/i.test(text)
+        ? "banked_credit"
+        : "hard_reset";
   const scope =
-    /all paid|all plans|everyone|all users|all accounts|codex users|chatgpt work|across all|paid plans/i.test(
+    /all paid|all plans|everyone|all users|all accounts|codex users|chatgpt work|across all|paid plans|plus and pro|plus & pro/i.test(
       text,
     )
       ? "all_paid"

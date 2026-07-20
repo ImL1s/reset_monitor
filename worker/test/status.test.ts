@@ -1,13 +1,15 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildProviderCard,
   classifyClaudeText,
   classifyCodexText,
   computeSourceHealth,
   deriveDisplayStatus,
+  isActionablePending,
   isActiveEvent,
 } from "../src/status.js";
-import type { PublishedEvent } from "../src/types.js";
+import type { EventCandidate, PublishedEvent } from "../src/types.js";
 
 describe("classifyCodexText", () => {
   it("hits hard reset phrases", () => {
@@ -17,6 +19,25 @@ describe("classifyCodexText", () => {
     assert.ok(r.hits.length > 0);
     assert.equal(r.excluded, false);
     assert.equal(r.scope, "all_paid");
+  });
+
+  it("soft-matches previously missing hard posts", () => {
+    for (const t of [
+      "Introducing... another usage limit reset for all our ChatGPT Work and Codex users. Should land over next 30 minutes.",
+      "And yes we are resetting the limits again too as I mentioned yesterday.",
+      "We have now fixed this issue and are reseting the rate limit for all plus and pro users to compensate.",
+      "usage limits will be fully reset again in the next hour and we will credit one additional reset into your bank",
+    ]) {
+      const r = classifyCodexText(t);
+      assert.equal(r.excluded, false, t.slice(0, 50));
+    }
+  });
+
+  it("explicit hard reset not typed as banked only", () => {
+    const r = classifyCodexText(
+      "This is a hard reset given some users had stacked up banked resets already.",
+    );
+    assert.equal(r.type, "hard_reset");
   });
 
   it("excludes question teaser", () => {
@@ -145,6 +166,82 @@ describe("deriveDisplayStatus", () => {
       everConfirmed: true,
     });
     assert.equal(r.display, "source_unhealthy");
+  });
+
+  it("last public reset prefers effective_at over verified_at", () => {
+    const olderAnnounce: PublishedEvent = {
+      ...baseEvent,
+      id: "old",
+      source_post_id: "2077607697487188198",
+      effective_at: "2026-07-16T04:14:09.000Z",
+      verified_at: "2026-07-20T12:00:00.000Z",
+      display_until: "2026-07-17T04:14:09.000Z",
+    };
+    const newerAnnounce: PublishedEvent = {
+      ...baseEvent,
+      id: "new",
+      source_post_id: "2078320950488297917",
+      title: "Oops hard reset",
+      effective_at: "2026-07-18T03:28:22.000Z",
+      verified_at: "2026-07-18T03:28:22.000Z",
+      display_until: "2026-07-19T03:28:22.000Z",
+    };
+    const card = buildProviderCard({
+      config: {
+        id: "codex",
+        display_name: "Codex",
+        monitored: true,
+        authority_hint: "staff",
+      },
+      meta: { last_operator_heartbeat_at: new Date().toISOString() },
+      events: [olderAnnounce, newerAnnounce],
+      pending: null,
+      now: new Date("2026-07-20T12:00:00.000Z"),
+    });
+    assert.equal(card.last_confirmed_event?.source_post_id, "2078320950488297917");
+    assert.equal(card.display_status, "no_recent_confirmed");
+  });
+
+  it("stale pending older than last blessing does not dominate", () => {
+    const last: PublishedEvent = {
+      ...baseEvent,
+      effective_at: "2026-07-18T03:28:22.000Z",
+      verified_at: "2026-07-18T03:28:22.000Z",
+      display_until: "2026-07-19T03:28:22.000Z",
+      source_post_id: "2078320950488297917",
+    };
+    // March 2026 snowflake-ish id 2031216405266481489
+    const pending: EventCandidate = {
+      id: "cand_old",
+      provider: "codex",
+      raw_source_id: "r",
+      suggested_type: "hard_reset",
+      suggested_scope: "all_paid",
+      rule_hits: [],
+      rule_version: "t",
+      status: "pending_review",
+      created_at: "2026-07-20T08:00:00.000Z",
+      updated_at: "2026-07-20T08:00:00.000Z",
+      source_url: "https://x.com/thsottiaux/status/2031216405266481489",
+      raw_text: "we will be reseting rate limits in a bit",
+      post_id: "2031216405266481489",
+      author_handle: "thsottiaux",
+    };
+    assert.equal(isActionablePending(pending, last, new Date("2026-07-20T12:00:00.000Z")), false);
+    const card = buildProviderCard({
+      config: {
+        id: "codex",
+        display_name: "Codex",
+        monitored: true,
+        authority_hint: "staff",
+      },
+      meta: { last_operator_heartbeat_at: new Date().toISOString() },
+      events: [last],
+      pending,
+      now: new Date("2026-07-20T12:00:00.000Z"),
+    });
+    assert.equal(card.display_status, "no_recent_confirmed");
+    assert.equal(card.pending_detection, null);
   });
 
   it("never calm when stale without events", () => {

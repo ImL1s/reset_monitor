@@ -22,31 +22,32 @@ class StatsHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Prefer Codex-scoped chips when comparing to codex-resets-style clocks
     final chips = <(IconData, String, Color)>[
       (
         Icons.bolt_rounded,
-        '${stats.totalConfirmed} resets tracked',
+        '${stats.totalConfirmed} strict confirms',
         RadarColors.accent,
       ),
       (
         Icons.hourglass_bottom_rounded,
         stats.daysSinceLast == null
-            ? 'no last reset'
-            : '${stats.daysSinceLast}d since last',
+            ? 'no last public reset'
+            : '${stats.daysSinceLast}d since last blessing',
         RadarColors.warning,
       ),
       (
         Icons.timeline_rounded,
         stats.avgIntervalDays == null
             ? 'avg —'
-            : 'avg ${stats.avgIntervalDays}d',
+            : 'avg ${stats.avgIntervalDays}d (strict set)',
         RadarColors.info,
       ),
       (
         Icons.water_drop_outlined,
         stats.longestDroughtDays == null
             ? 'drought —'
-            : 'drought ${stats.longestDroughtDays}d',
+            : 'longest gap ${stats.longestDroughtDays}d',
         RadarColors.muted,
       ),
       (

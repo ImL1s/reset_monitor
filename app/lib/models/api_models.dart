@@ -85,6 +85,7 @@ class EventData {
     required this.sourceUrl,
     required this.displayUntil,
     required this.verifiedAt,
+    this.effectiveAt,
     this.bodyExcerpt,
     this.claimNote,
     this.retracted = false,
@@ -97,10 +98,16 @@ class EventData {
   final String sourceUrl;
   final String displayUntil;
   final String verifiedAt;
+  /// Announcement time (prefer for "last public reset" display).
+  final String? effectiveAt;
   final String? bodyExcerpt;
   final String? claimNote;
   final bool retracted;
   final String? provider;
+
+  /// Prefer announcement clock over import/verify clock.
+  String get announcedAt =>
+      (effectiveAt != null && effectiveAt!.isNotEmpty) ? effectiveAt! : verifiedAt;
 
   static EventData? tryParse(Map<String, dynamic>? json) {
     if (json == null) return null;
@@ -111,6 +118,7 @@ class EventData {
       sourceUrl: json['source_url'] as String? ?? '',
       displayUntil: json['display_until'] as String? ?? '',
       verifiedAt: json['verified_at'] as String? ?? '',
+      effectiveAt: json['effective_at'] as String?,
       bodyExcerpt: json['body_excerpt'] as String?,
       claimNote: json['claim_note'] as String?,
       retracted: json['retracted'] == true,

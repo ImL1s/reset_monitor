@@ -196,7 +196,7 @@ class _ProviderStatusCardState extends State<ProviderStatusCard> {
                     ] else if (data.lastConfirmedEvent != null) ...[
                       const SizedBox(height: 14),
                       Text(
-                        'Last confirmed',
+                        'Last public reset',
                         style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               color: RadarColors.muted,
                             ),
@@ -211,8 +211,14 @@ class _ProviderStatusCardState extends State<ProviderStatusCard> {
                             ),
                       ),
                       Text(
-                        formatRadarTime(data.lastConfirmedEvent!.verifiedAt),
+                        formatRadarTime(data.lastConfirmedEvent!.announcedAt),
                         style: Theme.of(context).textTheme.labelSmall,
+                      ),
+                      Text(
+                        'Last blessing ≠ still green after the window ends',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: RadarColors.muted,
+                            ),
                       ),
                     ],
                     if (data.pendingDetection != null) ...[
