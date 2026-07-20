@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { NotifyOutbox } from "../src/notify.js";
 
 describe("NotifyOutbox", () => {
-  it("dedupes sent confirmed", () => {
+  it("dedupes sent confirmed", async () => {
     const box = new NotifyOutbox();
     const a = box.enqueue({
       event_id: "e1",
@@ -11,7 +11,7 @@ describe("NotifyOutbox", () => {
       payload: "RESET codex",
     });
     assert.ok(a);
-    box.drain();
+    await box.drain();
     const b = box.enqueue({
       event_id: "e1",
       kind: "confirmed",
@@ -20,10 +20,10 @@ describe("NotifyOutbox", () => {
     assert.equal(b, null);
   });
 
-  it("allows retract after confirmed", () => {
+  it("allows retract after confirmed", async () => {
     const box = new NotifyOutbox();
     box.enqueue({ event_id: "e2", kind: "confirmed", payload: "ok" });
-    box.drain();
+    await box.drain();
     const r = box.enqueue({
       event_id: "e2",
       kind: "retract",
@@ -32,7 +32,24 @@ describe("NotifyOutbox", () => {
     });
     assert.ok(r);
     assert.equal(r.kind, "retract");
-    box.drain();
+    await box.drain();
     assert.equal(r.status, "sent");
+  });
+
+  it("sends telegram when configured", async () => {
+    const calls: string[] = [];
+    const box = new NotifyOutbox();
+    box.configure({
+      botToken: "tok",
+      chatId: "-1001",
+      fetchImpl: async (input) => {
+        calls.push(String(input));
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+    box.enqueue({ event_id: "e3", kind: "confirmed", payload: "hello" });
+    const r = await box.drain();
+    assert.equal(r.sent, 1);
+    assert.ok(calls[0]?.includes("api.telegram.org"));
   });
 });

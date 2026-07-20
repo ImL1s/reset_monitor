@@ -90,6 +90,8 @@ Admin production: `npx wrangler secret put ADMIN_TOKEN` then header `X-Admin-Tok
 ## MVP scope
 
 - P0：Codex + Claude 公開事件看板  
-- 綠燈：admin confirm only  
+- 綠燈：**免費全自動** — FxTwitter v2 每 10 分鐘拉 `@thsottiaux` / `@ClaudeDevs`，嚴格模板自動 confirm（`decision_by=auto_rules`）；admin 僅緊急撤回
+- 開關：`AUTO_PUBLISH` / `MONITORING_ENABLED`（wrangler vars）；手動：`POST /admin/v1/pipeline/run`
+- 公開：`GET /v1/monitor`  
 - 其餘 provider：`not_monitored`  
 - 個人 OAuth：Phase 2 mobile only  

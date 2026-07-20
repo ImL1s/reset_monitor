@@ -55,18 +55,18 @@ const PROVIDERS: ProviderConfig[] = [
   },
 ];
 
-/** Allowlisted handles → synthetic stable user ids (MVP; replace with real X ids later). */
+/** Allowlisted handles → real X user ids (from FxTwitter profile, 2026-07-20). */
 export const AUTHOR_ALLOWLIST: Record<
   string,
   { userId: string; grade: "official_product" | "staff"; providers: ProviderId[] }
 > = {
   thsottiaux: {
-    userId: "xuid_thsottiaux_mvp",
+    userId: "1953337039510003712",
     grade: "staff",
     providers: ["codex"],
   },
   claudedevs: {
-    userId: "xuid_claudedevs_mvp",
+    userId: "2024518793679294464",
     grade: "official_product",
     providers: ["claude"],
   },
@@ -87,6 +87,8 @@ export class MemoryStore {
   candidates = new Map<string, EventCandidate>();
   events = new Map<string, PublishedEvent>();
   meta = new Map<ProviderId, ProviderRuntimeMeta>();
+  /** Last free-auto pipeline report (in-memory + KV via serialize). */
+  lastPipelineReport: unknown = null;
 
   constructor() {
     for (const p of PROVIDERS) {

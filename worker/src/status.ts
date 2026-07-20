@@ -197,7 +197,7 @@ export function buildProviderCard(args: {
             suggested_type: args.pending.suggested_type,
             source_url: args.pending.source_url,
             created_at: args.pending.created_at,
-            message: "偵測到官方貼文，待確認",
+            message: "偵測到候選（自動規則未達綠燈門檻）",
           }
         : null,
   };
@@ -222,6 +222,25 @@ export function classifyCodexText(text: string): {
     "resetting the usage limits",
     "usage limits have been reset",
     "oops... i did it again",
+    "have reset usage limits",
+    "have reset rate limits",
+    "i have reset",
+    "we have reset",
+    "reset rate limits",
+    "reseting rate limits",
+    "resetting rate limits",
+    "rate limit reset",
+    "sneaky double reset",
+    "reset button pressed",
+    "usage reset on the house",
+    "into the reset bank",
+    "added a banked reset",
+    "we are once again resetting",
+    "we're resetting",
+    "reset everyone's",
+    "across all paid",
+    "all plans",
+    "pressing the button",
   ];
   const hits = phrases.filter((p) => lower.includes(p));
 
@@ -245,12 +264,18 @@ export function classifyCodexText(text: string): {
     };
   }
 
-  const type: EventType = /banked reset/i.test(text)
-    ? "banked_credit"
-    : "hard_reset";
-  const scope = /all paid|all plans|everyone/i.test(text)
-    ? "all_paid"
-    : "unknown";
+  const type: EventType =
+    /banked reset|into the reset bank|into your bank|added a banked reset/i.test(
+      text,
+    )
+      ? "banked_credit"
+      : "hard_reset";
+  const scope =
+    /all paid|all plans|everyone|all users|all accounts|codex users|chatgpt work|across all|paid plans/i.test(
+      text,
+    )
+      ? "all_paid"
+      : "unknown";
 
   return { hits, type, scope, excluded: hits.length === 0 };
 }
@@ -264,12 +289,34 @@ export function classifyClaudeText(text: string): {
 } {
   const patterns = [
     "we've reset 5-hour and weekly",
+    "we’ve reset 5-hour and weekly",
     "reset 5-hour and weekly rate limits",
     "rate limits for all users",
     "reset everyone's 5-hour and weekly",
+    "reset everyone’s 5-hour and weekly",
   ];
   const lower = text.toLowerCase();
   const hits = patterns.filter((p) => lower.includes(p));
+
+  if (/\?/.test(text) && /should we|shall we|maybe|might we/i.test(text)) {
+    return {
+      hits,
+      type: "hard_reset",
+      scope: "unknown",
+      excluded: true,
+      excludeReason: "question_teaser",
+    };
+  }
+  if (/\bno reset\b|not reset|won't reset|will not reset/i.test(text)) {
+    return {
+      hits,
+      type: "hard_reset",
+      scope: "unknown",
+      excluded: true,
+      excludeReason: "negation",
+    };
+  }
+
   return {
     hits,
     type: "hard_reset",

@@ -5,7 +5,9 @@ import { buildProviderCard, nowIso } from "./status.js";
 import { store, AUTHOR_ALLOWLIST } from "./store.js";
 import { notifyOutbox } from "./notify.js";
 import { ADMIN_HTML } from "./admin_html.js";
-import type { ProviderId } from "./types.js";
+import { runAutoCycle } from "./pipeline/run_cycle.js";
+import { computeProviderStats } from "./pipeline/stats.js";
+import type { ProviderId, StatsResponse } from "./types.js";
 
 function envFlag(name: string, fallback = "0"): string {
   const g = globalThis as Record<string, string | undefined>;
@@ -65,6 +67,26 @@ export function createApp() {
   app.get("/v1/snapshot", (c) => {
     return c.json(buildSnapshot(), 200, {
       "Cache-Control": "public, max-age=15, s-maxage=30, stale-while-revalidate=60",
+    });
+  });
+
+  app.get("/v1/stats", (c) => {
+    const now = new Date();
+    const all = store.allEventsSorted();
+    const monitored = store.listProviders().filter((p) => p.monitored);
+    const providers = monitored.map((p) =>
+      computeProviderStats(store.eventsFor(p.id), now, p.id),
+    );
+    const overall = computeProviderStats(all, now, "all");
+    const body: StatsResponse = {
+      schema_version: CONFIG.schemaVersion,
+      as_of: nowIso(now),
+      providers,
+      overall,
+    };
+    return c.json(body, 200, {
+      "Cache-Control":
+        "public, max-age=15, s-maxage=30, stale-while-revalidate=60",
     });
   });
 
@@ -186,11 +208,12 @@ export function createApp() {
         kind: "confirmed",
         payload: `✅ ${ev.provider} ${ev.type}: ${ev.title}\n${ev.source_url}`,
       });
-      notifyOutbox.drain();
+      const drain = await notifyOutbox.drain();
       return c.json({
         event: ev,
         telegram_queued: !!queued,
-        notify_stub: true,
+        notify_stub: drain.stub > 0,
+        notify: drain,
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "error";
@@ -220,8 +243,8 @@ export function createApp() {
         kind: "retract",
         payload: `↩️ retract ${ev.provider}: ${ev.title}\nreason: ${body.reason ?? "retracted"}`,
       });
-      notifyOutbox.drain();
-      return c.json({ event: ev, notify_stub: true });
+      const drain = await notifyOutbox.drain();
+      return c.json({ event: ev, notify_stub: drain.stub > 0, notify: drain });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "error";
       return c.json({ error: { code: msg } }, 400);
@@ -261,6 +284,59 @@ export function createApp() {
   app.get("/admin/v1/allowlist", (c) => {
     if (!isAdmin(c)) return c.json({ error: { code: "unauthorized" } }, 401);
     return c.json({ authors: AUTHOR_ALLOWLIST });
+  });
+
+  /**
+   * Free-auto pipeline: FxTwitter v2 timeline → ingest → strict auto-green.
+   * Admin-only trigger; cron also runs this on schedule.
+   */
+  app.post("/admin/v1/pipeline/run", async (c) => {
+    if (!isAdmin(c)) return c.json({ error: { code: "unauthorized" } }, 401);
+    if (envFlag("MONITORING_ENABLED", "1") !== "1") {
+      return c.json({ error: { code: "monitoring_disabled" } }, 503);
+    }
+    try {
+      const body = await c.req.json().catch(() => ({} as { auto_publish?: boolean; count?: number }));
+      const autoPublish =
+        body.auto_publish !== undefined
+          ? !!body.auto_publish
+          : envFlag("AUTO_PUBLISH", "1") === "1";
+      const report = await runAutoCycle({
+        autoPublish,
+        count: typeof body.count === "number" ? body.count : 10,
+      });
+      return c.json({ ok: true, report });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "error";
+      return c.json({ error: { code: msg } }, 500);
+    }
+  });
+
+  app.get("/admin/v1/pipeline/last", (c) => {
+    if (!isAdmin(c)) return c.json({ error: { code: "unauthorized" } }, 401);
+    return c.json({
+      report: store.lastPipelineReport,
+      auto_publish: envFlag("AUTO_PUBLISH", "1"),
+      monitoring_enabled: envFlag("MONITORING_ENABLED", "1"),
+    });
+  });
+
+  /** Public: monitoring mode (no secrets). */
+  app.get("/v1/monitor", (c) => {
+    return c.json({
+      mode: "free_auto",
+      source: "fxtwitter_v2",
+      auto_publish: envFlag("AUTO_PUBLISH", "1") === "1",
+      monitoring_enabled: envFlag("MONITORING_ENABLED", "1") === "1",
+      last_run: store.lastPipelineReport
+        ? {
+            ran_at: (store.lastPipelineReport as { ran_at?: string }).ran_at,
+            accounts: (
+              store.lastPipelineReport as { accounts?: unknown[] }
+            ).accounts,
+          }
+        : null,
+    });
   });
 
   return app;

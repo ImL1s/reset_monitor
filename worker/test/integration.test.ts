@@ -38,6 +38,13 @@ describe("integration HTTP", () => {
     store.touchHeartbeat("claude");
   });
 
+  it("GET /v1/stats returns overall totals", async () => {
+    const { status, data } = await json(app, "GET", "/v1/stats");
+    assert.equal(status, 200);
+    assert.ok(data.overall.total_confirmed >= 1);
+    assert.ok(Array.isArray(data.providers));
+  });
+
   it("GET /v1/snapshot schema_version 1 and monitored cards", async () => {
     const { status, data } = await json(app, "GET", "/v1/snapshot");
     assert.equal(status, 200);

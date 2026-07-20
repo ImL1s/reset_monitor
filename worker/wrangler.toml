@@ -15,3 +15,10 @@ id = "e70f0558083a417083602c791bb188f0"
 SCHEMA_VERSION = "1"
 # Production fail-closed. Local: npm run dev:local sets bypass=1 in process.
 ADMIN_DEV_BYPASS = "0"
+# Free-auto: FxTwitter poll + strict auto-green (no paid X API).
+AUTO_PUBLISH = "1"
+MONITORING_ENABLED = "1"
+
+# Poll allowlisted timelines every 10 minutes
+[triggers]
+crons = ["*/10 * * * *"]

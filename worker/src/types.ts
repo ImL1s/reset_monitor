@@ -178,6 +178,24 @@ export interface EventsResponse {
   has_more: boolean;
 }
 
+export interface ProviderStatsDto {
+  provider: ProviderId | "all";
+  total_confirmed: number;
+  hard_reset_count: number;
+  banked_credit_count: number;
+  last_reset_at: string | null;
+  days_since_last: number | null;
+  avg_interval_days: number | null;
+  longest_drought_days: number | null;
+}
+
+export interface StatsResponse {
+  schema_version: number;
+  as_of: string;
+  providers: ProviderStatsDto[];
+  overall: ProviderStatsDto;
+}
+
 /** hours */
 export const CONFIG = {
   schemaVersion: 1,
