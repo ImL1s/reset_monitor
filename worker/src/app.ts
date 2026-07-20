@@ -1,15 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { CONFIG, SnapshotResponse, EventsResponse } from "./types.js";
 import { buildProviderCard, nowIso } from "./status.js";
 import { store, AUTHOR_ALLOWLIST } from "./store.js";
 import { notifyOutbox } from "./notify.js";
+import { ADMIN_HTML } from "./admin_html.js";
 import type { ProviderId } from "./types.js";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function envFlag(name: string, fallback = "0"): string {
   const g = globalThis as Record<string, string | undefined>;
@@ -64,14 +60,7 @@ export function createApp() {
 
   app.get("/health", (c) => c.json({ ok: true, schema_version: CONFIG.schemaVersion }));
 
-  app.get("/admin", (c) => {
-    try {
-      const html = readFileSync(join(__dirname, "../public/admin.html"), "utf8");
-      return c.html(html);
-    } catch {
-      return c.text("admin.html missing", 404);
-    }
-  });
+  app.get("/admin", (c) => c.html(ADMIN_HTML));
 
   app.get("/v1/snapshot", (c) => {
     return c.json(buildSnapshot(), 200, {

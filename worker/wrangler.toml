@@ -5,7 +5,11 @@ compatibility_date = "2026-07-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "reset-radar"
-database_id = "local-dev-placeholder"
+database_id = "44cf30e0-3b33-4140-af41-b5a7f496b146"
+
+[[kv_namespaces]]
+binding = "STATE"
+id = "e70f0558083a417083602c791bb188f0"
 
 [vars]
 SCHEMA_VERSION = "1"

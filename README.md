@@ -65,6 +65,28 @@ curl -s -X POST http://127.0.0.1:8787/admin/v1/ingest \
 ./scripts/verify-mvp.sh
 ```
 
+## Deploy (decided: Cloudflare, not Firebase/Vercel)
+
+See `docs/HOSTING.md`.
+
+| 服務 | URL |
+|------|-----|
+| API Worker | https://reset-radar.taiwan-traffic.workers.dev |
+| Public snapshot | https://reset-radar.taiwan-traffic.workers.dev/v1/snapshot |
+| Web (Pages) | 見 deploy 輸出 `*.pages.dev` |
+
+```bash
+# API
+cd worker && npx wrangler deploy
+
+# Web
+cd app && flutter build web --release \
+  --dart-define=API_BASE=https://reset-radar.taiwan-traffic.workers.dev
+npx wrangler pages deploy build/web --project-name=reset-radar-web
+```
+
+Admin production: `npx wrangler secret put ADMIN_TOKEN` then header `X-Admin-Token`.
+
 ## MVP scope
 
 - P0：Codex + Claude 公開事件看板  
