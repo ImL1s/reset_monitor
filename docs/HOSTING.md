@@ -1,4 +1,4 @@
-# Hosting 決策（2026-07-20）
+# Hosting 決策（2026-07-21）
 
 ## 決策摘要
 
@@ -62,6 +62,17 @@ npx wrangler pages deploy build/web --project-name=reset-radar-web --commit-dirt
 
 ## 運維注意
 
-- KV last-write-wins：cron 與 request 並發可能互蓋（可接受 MVP；長期 D1/DO）  
-- Free-auto 假綠 = P0：改模板／LLM 要跑 `worker/test/corpus_gate.test.ts`  
+- KV last-write-wins：cron 與 request 並發可能互蓋（MVP；表徵測試見 `worker/test/persist.test.ts`；長期 D1/DO 見 `docs/spikes/d-kv-to-durable.md`）  
+- Free-auto 假綠 = P0：改模板／LLM 要跑 `worker/test/corpus_gate.test.ts` + 全套 `npm test`  
 - Seed 歷史 **不** 強制延長 TTL（見 `clampSeedHistoryTtl`）  
+- Production admin：必須設 `ADMIN_TOKEN`；`/admin` UI 需自行貼 token（`X-Admin-Token`）  
+- Public request **不會** bootstrap pipeline（僅 cron + admin pipeline/run）  
+- Local API：`npm run dev:local` 綁定 **127.0.0.1**（bypass 僅本機）  
+
+## 相關
+
+- 產品：`docs/PURPOSE.md`、`docs/PLAN.md`（v4）  
+- 契約：`docs/api-v1-snapshot.md`  
+- 協作：`AGENTS.md`  
+- 落地計畫：`plans/README.md`  
+

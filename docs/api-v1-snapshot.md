@@ -1,8 +1,8 @@
-# API v1 — 凍結契約（W1）
+# API v1 — 公開契約
 
-> schema_version: **1**  
-> 日期：2026-07-20  
-> 對齊：PLAN v3
+> schema_version: **1**（additive only）  
+> 日期：2026-07-21  
+> 對齊：PLAN v4、README 現況
 
 ---
 
@@ -31,18 +31,24 @@
 }
 ```
 
+| 欄位 | 語意（2026-07-21） |
+|------|-------------------|
+| `total_confirmed` | 所有非 retract 事件數 |
+| `hard_reset_count` / `banked_credit_count` | 分型計數 |
+| `last_reset_at` / `days_since_last` / `avg_interval_days` / `longest_drought_days` | **僅 hard_reset**（banked 不影響「距上次硬重置」） |
+
 ## `GET /v1/monitor`
 
-公開監控模式（無 secrets）。
+公開監控模式（無 secrets、無 adapter raw error 字串）。
 
 | 欄位 | 說明 |
 |------|------|
 | `mode` | `free_auto` |
-| `source` | last poll adapters（如 `fxtwitter_v2` 或 `fxtwitter_v2+dayclaw_public`） |
+| `source` | last poll adapters（如 `fxtwitter_v2`） |
 | `auto_publish` | bool |
 | `monitoring_enabled` | bool |
 | `llm_gate_mode` | 如 `opencode_free_then_go` |
-| `last_run` | `{ ran_at, source, accounts[] }` |
+| `last_run` | `{ ran_at, source, accounts: [{ handle, source, ok }] }` |
 
 綠燈路徑：strict templates → optional LLM（free then Go）。  
 infra 失敗不永久 reject（soft pending / requeue）。
@@ -145,21 +151,27 @@ infra 失敗不永久 reject（soft pending / requeue）。
 | **監測** | `monitoring_status` / `source_health` | 營運心跳是否新鮮 |
 | **合成** | `display_status` | UI 主狀態（見下） |
 
-**`display_status` 優先序：**
+**`display_status` 優先序（North-Star 綠 = hard_reset only）：**
 
 ```
 if !monitored → not_monitored
-elif monitoring_status in (stale, disabled) AND no active event
+elif monitoring unhealthy AND no hard_reset in TTL AND no banked-only
     → source_unhealthy
-elif monitoring_status in (stale, disabled) AND active event still in TTL
-    → active_confirmed_degraded   // 綠燈保留 + 必須顯示「監測中斷」badge
-elif active event in TTL && !retracted → active_confirmed
+elif hard_reset in TTL && monitoring unhealthy
+    → active_confirmed_degraded   // 硬綠保留 + 監測中斷 badge
+elif hard_reset in TTL
+    → active_confirmed
+elif banked_credit in TTL (no hard)
+    → active_banked               // 非自動補額；UI 用琥珀，非綠
 elif pending candidate → detected_pending
 elif never confirmed → cold_start
 else → no_recent_confirmed
 ```
 
-**半自動 freshness 語意（凍結）：**
+`active_event` = 最新仍在 TTL 的已確認事件（任一 type，依 `effective_at`）。  
+`display_status` 綠燈只看 **hard_reset**。
+
+**Freshness 語意（凍結）：**
 
 | 時間欄位 | 語意 | 可否代填 |
 |----------|------|----------|
@@ -226,6 +238,9 @@ else → no_recent_confirmed
 ---
 
 ## `GET /v1/events`
+
+無 Auth。可選 query：`provider`、`limit`（max 100）、`include_retracted`。  
+`Cache-Control: public, max-age=15, s-maxage=30, stale-while-revalidate=60`
 
 | Query | 說明 |
 |-------|------|

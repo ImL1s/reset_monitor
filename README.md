@@ -3,7 +3,7 @@
 **零登入**打開就看：Codex / Claude 有沒有**公開** usage hard RESET。
 
 > Independent utility. Not affiliated with OpenAI, Anthropic, or other AI providers.  
-> 綠燈 ≠ 你個人帳號一定補滿。
+> **綠燈 ≠ 你個人帳號一定補滿。** Banked 公告 ≠ 自動補額。
 
 | | URL |
 |--|-----|
@@ -13,31 +13,37 @@
 | **Stats** | https://reset-radar.taiwan-traffic.workers.dev/v1/stats |
 | **Monitor** | https://reset-radar.taiwan-traffic.workers.dev/v1/monitor |
 
-## 現況（2026-07-20）
+## 現況（2026-07-21）
 
 | 能力 | 說明 |
 |------|------|
-| 全自動 | Cron 每 10 分拉 `@thsottiaux` / `@ClaudeDevs`（FxTwitter → Dayclaw fallback） |
-| 綠燈 | 嚴格模板 auto-confirm；失敗才問 LLM（**Zen free → Go 訂閱 fallback**） |
-| 假綠防護 | teaser / incoming / 否定句 reject；**規則與 LLM 皆需 usage 片語 floor + scope**；口頭禪 alone 不綠；seed 不延長 TTL |
-| Claude 臂 | soft classify 進 pending → `CLAUDE_STRONG` + floor + all-users scope；擋 API raise / promo / partial affected |
-| 歷史 | corpus seed + `/v1/stats`（以 `effective_at` 算 avg / drought，避免 re-import 失真） |
-| UI | 首屏 NOW / LAST；卡片 **NEXT 48h 啟發式**（非綠燈）；Pending = 未確認 |
-| 48h 預測 | 僅用**自家** hard_reset 間隔（baseline/elapsed/cooldown ± 明示承諾）；不刮競品；永不 notify |
-| Admin | 僅緊急 retract / pipeline；production 需 `ADMIN_TOKEN` |
-| TG | 可選；缺 secrets 不標 sent；設好後**同一次** drain 可送出 |
+| 全自動 | Cron `*/10` 拉 `@thsottiaux` / `@ClaudeDevs`（FxTwitter → Dayclaw fallback） |
+| 綠燈 | 嚴格模板 auto-confirm；失敗才 LLM（**Zen free → Go**）；**hard_reset only** 為 North-Star 綠 |
+| 假綠防護 | teaser / quote / RT / reply 不綠；usage 片語 floor + **收緊的 global scope**；口頭禪 alone 不綠；promote 用 **帖子時間** 算 TTL |
+| Claude 臂 | soft classify → strong + floor + all-users scope；擋 API raise / promo / partial |
+| Banked | 可確認並顯示 `active_banked`（琥珀），**不**當「公開 RESET 進行中」綠燈 |
+| 歷史 / stats | corpus seed；`last_reset_at` / 間隔 / drought = **hard_reset only** |
+| UI | NOW / LAST / **NEXT 48h 啟發式**；i18n zh-Hant/Hans/ja/en；品牌 logo |
+| 48h 預測 | 自家 hard 間隔 scorer；永不 notify、永不改綠燈 |
+| Admin | 緊急 retract / 手動 pipeline；production 需 `X-Admin-Token` |
+| 狀態 | SoT = **MemoryStore + KV**；D1 binding **預留未用** |
 
-## Docs
+## 文件地圖
 
 | 檔案 | 內容 |
 |------|------|
-| [docs/PURPOSE.md](docs/PURPOSE.md) | 目的與 hard rules |
-| [docs/PLAN.md](docs/PLAN.md) | 計劃 v3 + free-auto 管線 |
-| [docs/api-v1-snapshot.md](docs/api-v1-snapshot.md) | API 契約（snapshot / events / stats / monitor） |
+| [AGENTS.md](AGENTS.md) | Agent／協作硬規則與驗證指令 |
+| [docs/PROJECT.md](docs/PROJECT.md) | 目錄角色與真相來源 |
+| [docs/PURPOSE.md](docs/PURPOSE.md) | 產品目的與 hard rules |
+| [docs/PLAN.md](docs/PLAN.md) | 計劃 **v4**（free-auto 實況） |
+| [docs/api-v1-snapshot.md](docs/api-v1-snapshot.md) | 公開 API 契約 |
 | [docs/HOSTING.md](docs/HOSTING.md) | Cloudflare 部署 |
-| [docs/FULL_AUDIT.md](docs/FULL_AUDIT.md) | 完整審計 |
+| [docs/FULL_AUDIT.md](docs/FULL_AUDIT.md) | 歷史審計（pre-ship；現況以本 README 為準） |
+| [docs/spikes/](docs/spikes/) | 方向 spike（notify / OpenAIDevs / 個人層 / 持久化） |
 | [design-system/MASTER.md](design-system/MASTER.md) | UI 設計系統 |
-| [docs/superpowers/plans/](docs/superpowers/plans/) | 實作計畫 |
+| [brand/](brand/) | Logo 主檔與尺寸 |
+| [plans/](plans/) | `/improve` 實作計畫索引（001–016 已落地） |
+| [docs/superpowers/plans/](docs/superpowers/plans/) | 早期 feature 計畫 |
 
 ## Quick start
 
@@ -47,11 +53,13 @@
 cd worker
 npm install --legacy-peer-deps
 npm test
+npm run typecheck
 npm run dev:local
 # → http://127.0.0.1:8787/v1/snapshot
-# → http://127.0.0.1:8787/v1/stats
-# → http://127.0.0.1:8787/admin  (ADMIN_DEV_BYPASS=1)
+# → http://127.0.0.1:8787/admin  (ADMIN_DEV_BYPASS=1, loopback only)
 ```
+
+Secrets 範本：`worker/.env.example`（勿提交真實值）。
 
 ### 2) Flutter Web / App
 
@@ -59,7 +67,7 @@ npm run dev:local
 cd app
 flutter pub get
 flutter run -d chrome --dart-define=API_BASE=http://127.0.0.1:8787
-# 或 production API：
+# production:
 # flutter run -d chrome --dart-define=API_BASE=https://reset-radar.taiwan-traffic.workers.dev
 ```
 
@@ -68,15 +76,17 @@ flutter run -d chrome --dart-define=API_BASE=http://127.0.0.1:8787
 ```bash
 ./scripts/verify-parity.sh
 # 或
-cd worker && npm test
+cd worker && npm test && npm run typecheck
 cd app && flutter analyze && flutter test
 ```
+
+CI：`.github/workflows/ci.yml`（worker test/typecheck + flutter analyze/test）。
 
 ### 4) 歷史 corpus（可選更新）
 
 ```bash
 node scripts/fetch-codex-resets-corpus.mjs
-# 再產生 seed_data（若你有 gen 腳本）後 npm test
+# 再更新 seed 後 npm test
 ```
 
 ## Public API
@@ -84,13 +94,26 @@ node scripts/fetch-codex-resets-corpus.mjs
 | Method | Path | 說明 |
 |--------|------|------|
 | GET | `/health` | 健康 |
-| GET | `/v1/snapshot` | 各 provider 狀態卡 |
-| GET | `/v1/events?limit=50` | 時間軸 |
-| GET | `/v1/stats` | 次數 / 間隔 / drought |
-| GET | `/v1/monitor` | free-auto 模式與 last poll |
-| GET | `/share` | OG 分享 HTML |
+| GET | `/v1/snapshot` | 各 provider 狀態卡（含 `next_48h`） |
+| GET | `/v1/events?limit=50&provider=` | 時間軸（可篩 provider） |
+| GET | `/v1/stats` | 次數；間隔／drought = hard_reset only |
+| GET | `/v1/monitor` | free-auto 模式（無 raw error 字串） |
+| GET | `/share` | OG 分享 HTML（已 escape） |
 
 無 Auth。Client **禁止**自算 TTL，一律信 server `display_status`。
+
+### `display_status`（精簡）
+
+| 狀態 | 含義 |
+|------|------|
+| `active_confirmed` / `_degraded` | **hard_reset** 仍在 TTL 內（North-Star 綠） |
+| `active_banked` | banked 公告在 TTL 內（非自動補額） |
+| `detected_pending` | 候選未過綠燈閘 |
+| `no_recent_confirmed` | 監測正常、無進行中硬重置 |
+| `source_unhealthy` | 心跳過期且無硬綠 |
+| `cold_start` / `not_monitored` | 從未確認／未監測 |
+
+詳見 [docs/api-v1-snapshot.md](docs/api-v1-snapshot.md)。
 
 ## Free-auto pipeline
 
@@ -98,40 +121,39 @@ node scripts/fetch-codex-resets-corpus.mjs
 Cron */10
   → FxTwitter /2/profile/{handle}/statuses  (primary)
   → Dayclaw public items                     (fallback)
-  → ingest (allowlist + classify)
-  → shouldAutoPublish (strict templates)
-       fail → OpenCode free LLM (deepseek-v4-flash-free)
-            fail infra only → OpenCode Go (deepseek-v4-flash)
-  → confirm | soft-pending | hard-reject
-  → Telegram outbox (optional secrets)
-  → KV persist
+  → ingest (allowlist + userId 檢查 + classify)
+  → shouldAutoPublish (strict templates + scope)
+       fail → OpenCode free LLM → infra only → OpenCode Go
+  → confirm (effective_at from snowflake) | soft-pending | hard-reject
+  → Telegram outbox (optional)
+  → KV store_v1
 ```
 
 | Env / secret | 用途 |
 |--------------|------|
 | `AUTO_PUBLISH=1` | 自動綠燈 |
 | `MONITORING_ENABLED=1` | cron poll |
-| `OPENCODE_GO_API_KEY` | LLM gate（free+Go 同一 key 可） |
+| `OPENCODE_GO_API_KEY` | LLM gate |
 | `LLM_GATE_MODE=opencode_free_then_go` | 免費優先 |
 | `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` | 推播（可選） |
-| `ADMIN_TOKEN` | production admin |
+| `ADMIN_TOKEN` | production admin 寫入 |
 
 ```bash
 cd worker
 npx wrangler secret put OPENCODE_GO_API_KEY
-npx wrangler secret put TELEGRAM_BOT_TOKEN   # optional
-npx wrangler secret put TELEGRAM_CHAT_ID     # optional
-npx wrangler secret put ADMIN_TOKEN          # production admin
+npx wrangler secret put ADMIN_TOKEN
+# optional:
+npx wrangler secret put TELEGRAM_BOT_TOKEN
+npx wrangler secret put TELEGRAM_CHAT_ID
 ```
 
 ## Admin
 
-- **Local UI:** http://127.0.0.1:8787/admin（`npm run dev:local` bypass）
-- **Production:** `ADMIN_DEV_BYPASS=0`；header `X-Admin-Token: $ADMIN_TOKEN`
-- 日常不需要人工 confirm；admin 用於 **retract / 手動 pipeline**
+- **Local UI:** http://127.0.0.1:8787/admin（`npm run dev:local`，bypass，**僅 127.0.0.1**）
+- **Production:** `ADMIN_DEV_BYPASS=0`；UI 或 curl 帶 `X-Admin-Token`
+- 日常 **不需要** 人工 confirm；用於 **retract / 手動 pipeline / 緊急 ingest**
 
 ```bash
-# 手動跑一輪 free-auto
 curl -s -X POST https://reset-radar.taiwan-traffic.workers.dev/admin/v1/pipeline/run \
   -H "content-type: application/json" \
   -H "X-Admin-Token: $ADMIN_TOKEN" \
@@ -140,7 +162,7 @@ curl -s -X POST https://reset-radar.taiwan-traffic.workers.dev/admin/v1/pipeline
 
 ## Deploy (Cloudflare)
 
-See [docs/HOSTING.md](docs/HOSTING.md).
+詳見 [docs/HOSTING.md](docs/HOSTING.md)。
 
 ```bash
 # API
@@ -156,7 +178,12 @@ npx wrangler pages deploy build/web --project-name=reset-radar-web --commit-dirt
 
 | 做 | 不做（現階段） |
 |----|----------------|
-| 公開 hard / banked RESET 雷達 | 個人 OAuth / 個人 % 用量 |
-| Codex + Claude 全自動 | 弱訊號假綠燈 |
-| Stats / drought / timeline | App Store 上架 |
+| 公開 hard / banked 雷達 | 個人 OAuth / 個人 % 用量 |
+| Codex + Claude free-auto | 弱訊號假綠燈 |
+| Stats / drought / timeline / 48h 啟發式 | 群眾回報（防 Sybil 前） |
 | 可選 TG + LLM | 付費 X API 必備 |
+| 假綠防護持續收緊 | D1 全量遷移（仍預留） |
+
+## License / 歸屬
+
+Independent utility. Not affiliated with OpenAI, Anthropic, xAI, or other AI providers.

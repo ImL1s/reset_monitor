@@ -1,6 +1,6 @@
 # 專案目的（Purpose）
 
-> 狀態：2026-07-20 **v3**（完整審計 + 多路探索後）  
+> 狀態：2026-07-21 **v3.1**（free-auto 落地 + improve 001–016；契約見 api-v1-snapshot）  
 > 產品暫名：**RESET Radar**（可改）  
 > Repo：`reset_monitor`  
 > 審查：dual-review + `docs/FULL_AUDIT.md`
