@@ -14,7 +14,12 @@ import { llmJudgePromote } from "./llm_gate.js";
 import { isInfraFailureReason } from "./opencode_zen_gate.js";
 import { notifyOutbox } from "../notify.js";
 import type { ProviderId } from "../types.js";
-import { nowIso } from "../status.js";
+import {
+  addHours,
+  nowIso,
+  snowflakeToMs,
+  ttlHoursForType,
+} from "../status.js";
 
 /** Content fails that can still promote after LLM becomes available. */
 const AWAITING_LLM_REASONS = new Set([
@@ -198,12 +203,34 @@ async function tryPromoteCandidate(
   }
 
   if (gate.ok) {
+    if (cand.is_quote || cand.is_retweet || cand.is_reply) {
+      return { kind: "hard_reject", reason: "quote_rt_reply_not_auto" };
+    }
+    const type = gate.type ?? "hard_reset";
+    const snowMs = snowflakeToMs(cand.post_id);
+    const effective_at =
+      snowMs != null ? new Date(snowMs).toISOString() : nowIso();
+    const display_until = addHours(effective_at, ttlHoursForType(type));
+    const scope =
+      type === "banked_credit"
+        ? "unknown"
+        : hasGlobalScopeSignal(cand.raw_text) ||
+            (cand.provider === "claude" &&
+              hasClaudeGlobalScopeSignal(cand.raw_text))
+          ? "all_paid"
+          : "unknown";
+    if (type === "hard_reset" && scope !== "all_paid") {
+      return { kind: "hard_reject", reason: "no_scope_for_confirm" };
+    }
     const ev = store.confirm(cand.id, {
-      type: gate.type,
+      type,
+      scope: scope as "all_paid" | "unknown",
       title: gate.title,
       decision_by: decisionBy,
       decision_reason: gate.reason,
       body_excerpt: cand.raw_text.slice(0, 280),
+      effective_at,
+      display_until,
     });
     notifyOutbox.enqueue({
       event_id: ev.id,

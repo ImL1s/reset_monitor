@@ -59,7 +59,7 @@ function applyEnv(env: Env): void {
 }
 
 function flagOn(name: "AUTO_PUBLISH" | "MONITORING_ENABLED", fallback = "1"): boolean {
-  const g = globalThis as Record<string, string | undefined>;
+  const g = globalThis as unknown as Record<string, string | undefined>;
   return (g[name] ?? fallback) === "1";
 }
 
@@ -99,18 +99,8 @@ export default {
     applyEnv(env);
     await ensureHydrated(env);
 
-    // Bootstrap: if never polled successfully, run once in background on any request.
-    // Cron still owns steady-state every 10m.
-    if (
-      flagOn("MONITORING_ENABLED", "1") &&
-      !store.lastPipelineReport
-    ) {
-      ctx.waitUntil(
-        runMonitoringCycle(env).catch((e) =>
-          console.error("bootstrap_pipeline_failed", e),
-        ),
-      );
-    }
+    // Cron owns free-auto polling — do not bootstrap pipeline on public requests
+    // (prevents anonymous traffic from forcing Fx/LLM spend).
 
     const res = await app.fetch(request);
 

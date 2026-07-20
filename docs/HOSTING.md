@@ -18,7 +18,7 @@ State        →  KV STATE (store_v1 + notify outbox)
 Cron         →  */10 * * * * free-auto poll
 LLM (opt)    →  OpenCode Zen free → Go fallback
 Notify (opt) →  Telegram Bot API
-D1           →  provisioned, runtime still MemoryStore+KV (D1 reserved)
+D1           →  **reserved only** — runtime SoT is MemoryStore + KV `store_v1`
 ```
 
 ## 已部署 URL

@@ -32,9 +32,22 @@ export function computeProviderStats(
     };
   }
 
-  // Prefer effective_at (announcement time) over verified_at (import/confirm time)
-  // so seed/re-import batches do not collapse drought/avg to ~0.
-  const times = list.map((e) => new Date(e.effective_at || e.verified_at));
+  // Timing axes are hard_reset-only (banked must not move "days since last reset")
+  const hard = list.filter((e) => e.type === "hard_reset");
+  const times = hard.map((e) => new Date(e.effective_at || e.verified_at));
+  if (times.length === 0) {
+    return {
+      provider,
+      total_confirmed: list.length,
+      hard_reset_count: 0,
+      banked_credit_count: list.filter((e) => e.type === "banked_credit").length,
+      last_reset_at: null,
+      days_since_last: null,
+      avg_interval_days: null,
+      longest_drought_days: null,
+    };
+  }
+
   const last = times[times.length - 1]!;
   const intervals: number[] = [];
   for (let i = 1; i < times.length; i++) {
@@ -46,7 +59,7 @@ export function computeProviderStats(
   return {
     provider,
     total_confirmed: list.length,
-    hard_reset_count: list.filter((e) => e.type === "hard_reset").length,
+    hard_reset_count: hard.length,
     banked_credit_count: list.filter((e) => e.type === "banked_credit").length,
     last_reset_at: last.toISOString(),
     days_since_last: Math.round(toNow * 10) / 10,

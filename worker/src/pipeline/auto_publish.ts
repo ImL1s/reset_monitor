@@ -81,7 +81,13 @@ const CODEX_STRONG = [
   "another usage limit reset",
 ];
 
-/** Future-only phrasing without clear completed reset — no immediate green. */
+/**
+ * Future-only phrasing without completed past-tense — soft, no immediate green.
+ * Note: "usage limits will be fully reset" stays CODEX_STRONG (historical green)
+ * when paired with pastDone or is not sole INCOMING_ONLY hit without pastDone
+ * via isScheduledIncomingOnly pastDone check. We intentionally do NOT list
+ * "will be fully reset" here — corpus treats imminent staff posts as green.
+ */
 const INCOMING_ONLY = [
   "reset incoming",
   "rate limit reset incoming",
@@ -89,6 +95,7 @@ const INCOMING_ONLY = [
   "will be resetting rate limits",
   "will reset rate limits",
   "will reset usage",
+  "going to reset",
   "resetting tomorrow",
   "should be showing in your accounts in the next",
 ];
@@ -221,10 +228,14 @@ export function hasUsagePhraseFloor(text: string): boolean {
   return USAGE_PHRASE_FLOOR.some((p) => lower.includes(p));
 }
 
-/** Global/all-paid/banked scope — required for hard_reset promote (rules + LLM). */
+/**
+ * Global/all-paid/banked scope — required for hard_reset promote (rules + LLM).
+ * Must NOT treat past-tense/catchphrase alone as scope (false-green P0).
+ */
 export function hasGlobalScopeSignal(text: string): boolean {
   if (isBanked(text)) return true;
-  return /all paid|all plans|for everyone|all users|everyone|all accounts|across all|plus & pro|plus and pro|paid chat|paid plans|codex users|chatgpt work|all our|across plans|across codex|all plus|pro users|subscriptions|weekly usage|rate limits for|limits for all|limits across|limits again|limits in the process|in the process|you can keep building|keep building|hard reset|double reset|for all paid|all paid users|free usage|give free usage|global outage|we have reset|i have reset|we've reset|have reset usage|have reset rate|have reset the rate|usage limits for|usage limits in|resetting the limits/i.test(
+  // Explicit audience / all-paid signals only (align spirit with Claude helper)
+  return /all paid|for all paid|all paid users|all plans|for everyone|all users|everyone|all accounts|across all|plus & pro|plus and pro|paid chat|paid plans|chatgpt work|all our chatgpt|all our codex|across plans|across codex|all plus|for all plus|pro users|for all pro|subscriptions for all|limits for all|for all codex|codex and chatgpt work|chatgpt work and codex|all our chat|free usage for all|give free usage|global outage|all codex users|for codex users|codex users|thank you all|usage reset on the house|free usage|give free usage|on the house/i.test(
     text,
   );
 }
@@ -245,9 +256,11 @@ export function isScheduledIncomingOnly(text: string): boolean {
   const hasIncoming = INCOMING_ONLY.some((p) => lower.includes(p));
   if (!hasIncoming) return false;
   const pastDone =
-    /have reset|has reset|i have reset|we have reset|we've reset|limits have been reset|i did it again|sneaky double reset|added a banked reset|reset usage limits for all|are resetting the usage|we are once again resetting|another usage limit reset for/i.test(
+    /have reset|has reset|i have reset|we have reset|we've reset|limits have been reset|i did it again|sneaky double reset|added a banked reset|reset usage limits for all|are resetting the usage|we are once again resetting|another usage limit reset for|have now been reset|have now reset|usage limits will be fully reset|usage reset on the house|is now fully resolved|codex is back|incident is mitigated|we are giving all codex/i.test(
       text,
     );
+  // "will be fully reset" is treated as actionable announce (pastDone-ish) when
+  // it appears — not pure teaser. Incoming-only if only softer future phrases.
   return !pastDone;
 }
 

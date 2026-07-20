@@ -51,6 +51,12 @@ class StatusVisual {
           color: const Color(0xFFA3E635),
           icon: Icons.warning_amber_rounded,
         );
+      case 'active_banked':
+        return StatusVisual(
+          label: 'NOW: banked offer · not auto refill',
+          color: RadarColors.warning,
+          icon: Icons.account_balance_wallet_outlined,
+        );
       case 'detected_pending':
         return StatusVisual(
           label: 'NOW: NO · weak signal only',

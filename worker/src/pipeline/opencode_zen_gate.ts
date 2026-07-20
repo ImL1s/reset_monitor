@@ -104,7 +104,7 @@ export async function opencodeZenJudge(
       const body = await res.text().catch(() => "");
       return {
         ok: false,
-        reason: `opencode_http_${res.status}:${body.slice(0, 120)}`,
+        reason: `opencode_http_${res.status}`,
         via: opts.via ?? "single",
       };
     }

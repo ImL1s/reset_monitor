@@ -25,7 +25,7 @@ AI coding 時代，開發者同時訂閱多個工具（Codex / Claude / Grok / A
 
 **做一個零登入的「有沒有公開 RESET」雷達：以 Codex + Claude 的可稽核全站／半官方補額事件為核心，打開就看；個人用量是可選第二層（僅 mobile）。**
 
-> MVP **不追求**比 codex-resets.com 更快的 Codex 時效（半自動 + admin 核准通常更慢）。  
+> MVP **不追求**比 codex-resets.com 更快的 Codex 時效（free-auto 仍可能慢於競品；差異在可稽核雙源與假綠防護）。  
 > 可防守差異 = **證據鏈、雙源（+Claude）、來源健康、撤回、fail-closed**——不是速度軍備賽。
 
 ---
@@ -79,7 +79,7 @@ AI coding 時代，開發者同時訂閱多個工具（Codex / Claude / Grok / A
 | **Banked 公告** | 官方發放可自行兌換的重置券 | 分標籤；**不**等同帳號已自動補滿；資料欄 `claim_url` / `claim_note` 可知則填 |
 | **Scheduled window** | 個人 5h／週滾動窗 | 只做規則說明 |
 | **Personal** | 只有你的帳號 | Phase 2 mobile only |
-| **Detected / 待確認** | 官帳片語命中、尚未 admin 核准 | 黃燈「偵測到，待確認」 |
+| **Detected / 待確認** | 官帳片語命中、未達自動綠燈門檻 | 黃燈「偵測到，待確認」 |
 | **Rumor / cluster** | 群眾回報 | 最多黃燈調查中；永不單獨轉綠 |
 
 > **綠燈 =「最近一個已確認事件仍在 display_until 內」**，不是永久狀態，也**不保證**你的個人帳號此刻一定有額度。
@@ -145,7 +145,7 @@ AI coding 時代，開發者同時訂閱多個工具（Codex / Claude / Grok / A
 | 客戶端 | Flutter；**MVP Web first** |
 | 商業 | Freemium 架構；**MVP 可不啟 Pro** |
 | 綠燈（full-auto parity 2026-07-20） | **嚴格模板自動 confirm**（`decision_by=auto_rules`，FxTwitter v2 + Dayclaw fallback cron）；可選 LLM gate；admin 僅緊急撤回。歷史 corpus ≥85% 覆蓋；teaser fixture 必須 reject。Stats：total / days_since / avg / drought |
-| X 資料（MVP） | **人工／半自動**為主，不爬蟲（錢不是主因；信任是） |
+| X 資料（MVP） | **Free-auto**（FxTwitter／Dayclaw 輪詢）+ 嚴格規則／LLM 閘（信任閘；非爬蟲農場） |
 | 監測心跳 | **Admin heartbeat** 更新 freshness；≠「有無新推文」 |
 | Free 通知 | **Telegram** |
 | 個人層 | Phase 2；**僅 mobile**；禁 WebView 抓 session |

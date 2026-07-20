@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { shouldAutoPublish } from "../src/pipeline/auto_publish.js";
+import {
+  hasGlobalScopeSignal,
+  shouldAutoPublish,
+} from "../src/pipeline/auto_publish.js";
 import { normalizeFxStatus } from "../src/sources/fxtwitter.js";
 import { MemoryStore } from "../src/store.js";
 import type { EventCandidate } from "../src/types.js";
@@ -141,5 +144,45 @@ describe("MemoryStore auto path via ingest+gate", () => {
     });
     assert.equal(ev.decision_by, "auto_rules");
     assert.equal(ev.confidence, "confirmed");
+  });
+});
+
+
+describe("hasGlobalScopeSignal precision", () => {
+  it("rejects vacuous past-tense as scope alone", () => {
+    assert.equal(
+      hasGlobalScopeSignal("We have reset rate limits for the dogfood cohort"),
+      false,
+    );
+  });
+
+  it("accepts explicit all-paid audience", () => {
+    assert.equal(
+      hasGlobalScopeSignal(
+        "Enjoy reset usage limits for all paid users for Codex",
+      ),
+      true,
+    );
+  });
+
+  it("subset strong text does not auto-green", () => {
+    const r = shouldAutoPublish({
+      id: "c1",
+      provider: "codex",
+      raw_source_id: "r1",
+      suggested_type: "hard_reset",
+      suggested_scope: "all_paid",
+      rule_hits: [],
+      rule_version: "t",
+      status: "pending_review",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      source_url: "https://x.com/thsottiaux/status/1",
+      raw_text:
+        "We have reset rate limits for our enterprise VIP tier only. usage limits adjusted.",
+      post_id: "1",
+      author_handle: "thsottiaux",
+    });
+    assert.equal(r.ok, false);
   });
 });

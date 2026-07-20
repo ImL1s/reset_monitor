@@ -26,9 +26,16 @@ class RadarApi {
     );
   }
 
-  Future<TimelineResponse> fetchEvents({int limit = 50}) async {
+  Future<TimelineResponse> fetchEvents({
+    int limit = 50,
+    String? provider,
+  }) async {
+    final q = StringBuffer('limit=$limit');
+    if (provider != null && provider.isNotEmpty) {
+      q.write('&provider=$provider');
+    }
     final res = await http
-        .get(Uri.parse('$baseUrl/v1/events?limit=$limit'))
+        .get(Uri.parse('$baseUrl/v1/events?$q'))
         .timeout(const Duration(seconds: 12));
     if (res.statusCode != 200) {
       throw RadarApiException('Events failed (${res.statusCode})');

@@ -141,13 +141,11 @@ export class NotifyOutbox {
 
       if (!hasSecrets) {
         // Do NOT mark as sent — so configuring secrets later can still deliver
-        if (item.status !== "skipped_no_config") {
-          item.status = "skipped_no_config";
-          console.log(
-            `[notify-stub] ${item.dedupe_key}: ${item.payload.slice(0, 120)}`,
-          );
-          stub += 1;
-        }
+        item.status = "skipped_no_config";
+        console.log(
+          `[notify-stub] ${item.dedupe_key}: ${item.payload.slice(0, 120)}`,
+        );
+        stub += 1;
         continue;
       }
 

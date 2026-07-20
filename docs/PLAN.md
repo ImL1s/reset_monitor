@@ -1,8 +1,8 @@
 # RESET Radar — 計劃書（Plan）
 
 > 對齊：`docs/PURPOSE.md` v3、`docs/api-v1-snapshot.md`、`docs/FULL_AUDIT.md`  
-> 日期：2026-07-20 **v3**（完整審計：heartbeat、雙軸狀態、API 金樣、誠實時效）  
-> 審查紀錄：dual-review + 對抗稽核 + 公開源／CF／steelman 探索
+> 日期：2026-07-21 **v4**（free-auto 實況對齊；admin = 緊急 retract／手動 pipeline）  
+> 審查紀錄：dual-review + 對抗稽核 + `/improve deep` plans  
 
 ---
 
@@ -12,21 +12,21 @@
 
 | 層 | 內容 |
 |----|------|
-| **MVP 公開層** | 半自動 ingest（Codex + Claude）→ 狀態機 → 公開 API → Web Board + TG |
+| **MVP 公開層** | **Free-auto** ingest（Codex + Claude）→ 嚴格模板／LLM 閘 → 綠燈 → Public API → Web Board + 可選 TG |
 | **MVP 後** | 推播多通道、Pro、群眾回報（防 Sybil 後）、原生商店 |
 | **Phase 2** | 個人用量（僅 mobile、合規 OAuth／API） |
 
 **HARD RULES**
 
 1. 首屏永不要求 AI 帳號登入  
-2. **Confirmed 綠燈 = 官源候選 + admin 核准**（MVP）；關鍵字 alone 不夠  
+2. **Confirmed 綠燈 = 白名單帳號貼文 + 嚴格模板（及／或 LLM 閘）自動確認**；關鍵字 alone 不夠；**admin 僅緊急 retract／手動 ingest／觸發 pipeline**  
 3. 群眾回報永不單獨轉綠  
 4. 不上傳使用者 AI token／session 代查  
 5. 弱訊號 provider 不造假綠燈  
 6. 核心看板不進付費牆  
-7. 來源監測 stale → 不得偽「平靜」；**已確認且在 TTL 內的事件不因監測中斷而偷偷取消**（改 `active_confirmed_degraded` + badge）  
-8. 半自動 freshness = **operator heartbeat**，不是「有無新推文」  
-9. 公開 API 契約以 `docs/api-v1-snapshot.md` 為準（schema_version 1）
+7. 來源監測 stale → 不得偽「平靜」；**已確認且在 TTL 內的 hard_reset 不因監測中斷而偷偷取消**（改 `active_confirmed_degraded` + badge）  
+8. Freshness = **operator heartbeat**（cron／pipeline 成功可更新），不是「有無新推文」  
+9. 公開 API 契約以 `docs/api-v1-snapshot.md` 為準（schema_version 1 additive）
 
 ---
 
@@ -216,7 +216,7 @@ Client **禁止**自算 TTL；一律信 server。
 
 | 公開等級 | 條件 |
 |----------|------|
-| **confirmed** | 白名單 user id + 非排除上下文 + **admin 核准** + source_url |
+| **confirmed** | 白名單 user id + 非排除上下文 + **auto_rules／auto_rules_llm（或緊急 admin confirm）** + source_url |
 | **detected**（僅 UI 黃） | 規則命中候選，待核准 |
 | **likely** | 群眾 cluster（**MVP 不做**；見 §6） |
 | **rumor** | 不進首屏主狀態 |
@@ -263,12 +263,12 @@ Client **禁止**自算 TTL；一律信 server。
 
 - Flutter **Web first**（Board / Timeline / Detail）  
 - iOS/Android：可 scaffold，**不承諾** W4 商店 beta  
-- Riverpod + go_router  
+- Flutter：`MaterialApp` + `IndexedStack` 導航（**未**強制 Riverpod／go_router）  
 - 只讀公開 API  
 
 ### 4.2 後端（定案）
 
-**Cloudflare Worker + D1（或 KV）+ Cron Trigger**
+**Cloudflare Worker + MemoryStore + KV `store_v1`（D1 binding 預留未用）+ Cron Trigger**
 
 | 元件 | 職責 |
 |------|------|
@@ -281,10 +281,10 @@ Client **禁止**自算 TTL；一律信 server。
 | Telegram mirror | confirmed 與 retract 更正 |
 | Audit log | decision_by / reason / rule_version |
 
-**X 資料（MVP 定案）：人工／半自動**  
+**X 資料（MVP 定案）：free-auto 輪詢（FxTwitter → Dayclaw）+ 嚴格閘**  
 營運者看到 Tibo／ClaudeDevs 貼文 → Admin 貼 URL 或欄位 → 規則預填 → **人工 confirm**。  
 不採爬蟲。  
-**成本澄清：** 官方 X PPU 讀 2 帳號約 **$1–5／月**（非主因）；半自動主因是 **admin 信任閘** 與合規。  
+**成本澄清：** 官方 X PPU 讀 2 帳號約 **$1–5／月**；MVP 用免費 Fx／Dayclaw；信任閘 = **規則＋LLM**，非 admin 逐帖核准。  
 **Phase 1.5：** 可加 PPU 自動拉白名單 timeline → **只進 candidate**，仍不自動綠。
 
 **Heartbeat：** 即使無新事件，營運者應定期 `POST /admin/v1/heartbeat`（或每次打開 Admin 自動 ping），避免假 stale。
@@ -394,9 +394,9 @@ fixtures/     # 歷史貼文 JSON 回放測試
 
 | 項目 | 決定 |
 |------|------|
-| 後端 | **Cloudflare Worker + D1** |
-| X 資料 MVP | **人工／半自動 + Admin 核准** |
-| 綠燈 | **Admin confirm**；自動只到 detected |
+| 後端 | **Cloudflare Worker + KV MemoryStore**（D1 預留） |
+| X 資料 MVP | **Free-auto poll + strict／LLM gate** |
+| 綠燈 | **Auto confirm**；admin = 緊急 retract／手動 |
 | 綠燈 TTL | hard **24h** 預設 |
 | Heartbeat stale | **>12h** 無 heartbeat → monitoring stale |
 | Free 通知 | **Telegram**（W3；W1 可不做） |

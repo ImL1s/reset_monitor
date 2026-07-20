@@ -148,12 +148,22 @@ export function deriveDisplayStatus(args: {
   }
 
   const unhealthy = sourceHealth === "stale" || sourceHealth === "disabled";
-  const hasActive = !!activeEvent;
+  // North-Star green only for hard_reset (banked is a different public signal)
+  const hardActive =
+    activeEvent?.type === "hard_reset" ? activeEvent : null;
+  const bankedOnly =
+    !!activeEvent &&
+    activeEvent.type === "banked_credit" &&
+    !hardActive;
+  const hasHard = !!hardActive;
 
   let eventStatus: DisplayStatus;
-  if (hasActive) {
-    eventStatus =
-      unhealthy ? "active_confirmed_degraded" : "active_confirmed";
+  if (hasHard) {
+    eventStatus = unhealthy
+      ? "active_confirmed_degraded"
+      : "active_confirmed";
+  } else if (bankedOnly) {
+    eventStatus = "active_banked";
   } else if (pending && pending.status === "pending_review") {
     eventStatus = "detected_pending";
   } else if (!everConfirmed) {
@@ -163,14 +173,17 @@ export function deriveDisplayStatus(args: {
   }
 
   // Priority matrix
-  if (unhealthy && !hasActive) {
+  if (unhealthy && !hasHard && !bankedOnly) {
     return { display: "source_unhealthy", eventStatus };
   }
-  if (unhealthy && hasActive) {
+  if (unhealthy && hasHard) {
     return { display: "active_confirmed_degraded", eventStatus };
   }
-  if (hasActive) {
+  if (hasHard) {
     return { display: "active_confirmed", eventStatus };
+  }
+  if (bankedOnly) {
+    return { display: "active_banked", eventStatus };
   }
   if (pending && pending.status === "pending_review") {
     return { display: "detected_pending", eventStatus };
@@ -197,15 +210,13 @@ export function buildProviderCard(args: {
   );
 
   const nonRetracted = args.events.filter((e) => !e.retracted_at);
-  const active = nonRetracted.find((e) => isActiveEvent(e, now)) ?? null;
-  // Last public blessing = newest by announcement time (effective_at), not import time
+  // Newest announcement first — active must be latest still-in-TTL
   const sorted = [...nonRetracted].sort(
     (a, b) => eventTimeMs(b) - eventTimeMs(a),
   );
+  const active = sorted.find((e) => isActiveEvent(e, now)) ?? null;
   const lastConfirmed =
-    sorted.find((e) => !active || e.id !== active.id) ??
-    sorted[0] ??
-    null;
+    sorted.find((e) => !active || e.id !== active.id) ?? null;
 
   const pendingLive = isActionablePending(args.pending, lastConfirmed, now)
     ? args.pending

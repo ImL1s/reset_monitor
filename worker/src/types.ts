@@ -21,6 +21,7 @@ export type SourceHealth = "fresh" | "degraded" | "stale" | "disabled";
 export type DisplayStatus =
   | "active_confirmed"
   | "active_confirmed_degraded"
+  | "active_banked"
   | "detected_pending"
   | "no_recent_confirmed"
   | "source_unhealthy"
@@ -87,6 +88,9 @@ export interface EventCandidate {
   post_id: string;
   author_handle: string;
   author_user_id?: string;
+  is_quote?: boolean;
+  is_reply?: boolean;
+  is_retweet?: boolean;
 }
 
 export interface RawSource {

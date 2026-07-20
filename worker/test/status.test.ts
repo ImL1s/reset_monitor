@@ -320,6 +320,54 @@ describe("deriveDisplayStatus", () => {
     assert.equal(card.next_48h!.probability, null);
   });
 
+  it("banked-only active is not active_confirmed green", () => {
+    const banked: PublishedEvent = {
+      ...baseEvent,
+      type: "banked_credit",
+      display_until: "2099-01-01T00:00:00.000Z",
+    };
+    const r = deriveDisplayStatus({
+      monitored: true,
+      sourceHealth: "fresh",
+      activeEvent: banked,
+      pending: null,
+      everConfirmed: true,
+    });
+    assert.equal(r.display, "active_banked");
+    assert.notEqual(r.display, "active_confirmed");
+  });
+
+  it("newest in-TTL event is active_event", () => {
+    const older: PublishedEvent = {
+      ...baseEvent,
+      id: "old",
+      type: "hard_reset",
+      effective_at: "2026-07-18T00:00:00.000Z",
+      display_until: "2099-01-01T00:00:00.000Z",
+      source_post_id: "1",
+    };
+    const newer: PublishedEvent = {
+      ...baseEvent,
+      id: "new",
+      type: "hard_reset",
+      effective_at: "2026-07-19T00:00:00.000Z",
+      display_until: "2099-01-02T00:00:00.000Z",
+      source_post_id: "2",
+    };
+    const card = buildProviderCard({
+      config: {
+        id: "codex",
+        display_name: "Codex",
+        monitored: true,
+      },
+      meta: { last_operator_heartbeat_at: new Date().toISOString() },
+      events: [older, newer],
+      pending: null,
+      now: new Date("2026-07-20T12:00:00.000Z"),
+    });
+    assert.equal(card.active_event?.id, "new");
+  });
+
   it("not_monitored providers get next_48h null", () => {
     const card = buildProviderCard({
       config: {

@@ -28,4 +28,4 @@ if (process.env.RUN_PIPELINE_ON_BOOT === "1") {
     .catch((e) => console.error("boot pipeline failed", e));
 }
 
-serve({ fetch: app.fetch, port });
+serve({ fetch: app.fetch, port, hostname: "127.0.0.1" });

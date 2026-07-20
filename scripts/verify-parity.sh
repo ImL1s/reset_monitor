@@ -1,10 +1,21 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-export PATH="/Users/iml1s/fvm/default/bin:/opt/homebrew/bin:$PATH"
+export PATH="/opt/homebrew/bin:$PATH"
+if command -v flutter >/dev/null 2>&1; then
+  :
+elif command -v fvm >/dev/null 2>&1; then
+  flutter() { fvm flutter "$@"; }
+elif [[ -x "$HOME/fvm/default/bin/flutter" ]]; then
+  export PATH="$HOME/fvm/default/bin:$PATH"
+else
+  echo "flutter not found on PATH" >&2
+  exit 1
+fi
 
 cd "$ROOT/worker"
 npm test
+npm run typecheck
 
 cd "$ROOT/app"
 flutter analyze

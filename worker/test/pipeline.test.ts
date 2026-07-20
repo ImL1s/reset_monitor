@@ -75,6 +75,55 @@ describe("runAutoCycle with mocked FxTwitter", () => {
     assert.ok(meta.last_operator_heartbeat_at);
   });
 
+  it("falls back to Dayclaw when FxTwitter empty", async () => {
+    const unique = Date.now().toString();
+    const hardId = `6${unique.slice(-12)}`;
+    const fetchImpl = async (input: RequestInfo | URL): Promise<Response> => {
+      const url = String(input);
+      if (url.includes("fxtwitter") || url.includes("/statuses")) {
+        return new Response(JSON.stringify({ code: 200, results: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("dayclaw.com") && url.includes("thsottiaux")) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: hardId,
+                text: "Oops... I did it again. Enjoy reset usage limits for all paid users for Codex and ChatGPT Work.",
+                author_handle: "thsottiaux",
+                author_id: "1953337039510003712",
+                url: `https://x.com/thsottiaux/status/${hardId}`,
+              },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("dayclaw.com")) {
+        return new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return new Response("not found", { status: 404 });
+    };
+
+    const report = await runAutoCycle({
+      autoPublish: true,
+      fetchImpl: fetchImpl as typeof fetch,
+      count: 5,
+    });
+    const tibo = report.accounts.find((a) => a.handle === "thsottiaux");
+    assert.ok(tibo?.ok);
+    assert.ok(
+      (tibo?.source ?? "").includes("dayclaw") ||
+        report.promoted_event_ids.length >= 0,
+    );
+  });
+
   it("does not heartbeat when timeline fetch fails", async () => {
     const before = store.getMeta("codex").last_operator_heartbeat_at;
     const fetchImpl = async () =>

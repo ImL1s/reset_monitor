@@ -2,6 +2,7 @@ name = "reset-radar"
 main = "src/index.ts"
 compatibility_date = "2026-07-01"
 
+# D1 reserved — not used by runtime yet
 [[d1_databases]]
 binding = "DB"
 database_name = "reset-radar"

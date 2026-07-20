@@ -174,6 +174,15 @@ export class MemoryStore {
     if (!allow.providers.includes(input.provider)) {
       warnings.push("provider_author_mismatch");
     }
+    // Stable userId match when client/adapter supplies one
+    if (
+      input.author_user_id &&
+      allow.userId &&
+      !allow.userId.startsWith("xuid_") &&
+      input.author_user_id !== allow.userId
+    ) {
+      throw new Error("author_user_id_mismatch");
+    }
 
     // unique platform+post_id
     for (const r of this.raws.values()) {
@@ -216,10 +225,11 @@ export class MemoryStore {
       warnings.push(clf.excludeReason ?? "excluded");
     }
 
+    // Quotes/RTs/replies never auto-green (new post_id can replay language)
     const autoReject =
       clf.excluded ||
       raw.is_retweet ||
-      (raw.is_quote && clf.hits.length === 0) ||
+      raw.is_quote ||
       raw.is_reply;
 
     const candidate: EventCandidate = {
@@ -232,7 +242,13 @@ export class MemoryStore {
       rule_version: "2026-07-20.1",
       status: autoReject ? "rejected" : "pending_review",
       reject_reason: autoReject
-        ? (clf.excludeReason ?? "excluded_context")
+        ? raw.is_quote
+          ? "quote_not_auto"
+          : raw.is_retweet
+            ? "retweet_not_auto"
+            : raw.is_reply
+              ? "reply_not_auto"
+              : (clf.excludeReason ?? "excluded_context")
         : null,
       created_at: now,
       updated_at: now,
@@ -241,6 +257,9 @@ export class MemoryStore {
       post_id: raw.post_id,
       author_handle: raw.author_handle,
       author_user_id: raw.author_user_id,
+      is_quote: raw.is_quote,
+      is_reply: raw.is_reply,
+      is_retweet: raw.is_retweet,
     };
     this.candidates.set(candidate.id, candidate);
     this.touchIngest(input.provider, now);
@@ -279,16 +298,31 @@ export class MemoryStore {
 
     const allow = AUTHOR_ALLOWLIST[cand.author_handle.toLowerCase()];
     const now = nowIso();
-    const effective = body.effective_at ?? now;
+    const allowedTypes = new Set([
+      "hard_reset",
+      "banked_credit",
+      "policy_change",
+      "other",
+    ]);
     const type = body.type ?? cand.suggested_type;
-    const displayUntil =
+    if (!allowedTypes.has(type)) throw new Error("invalid_event_type");
+    const allowedScopes = new Set(["all_paid", "subset", "unknown"]);
+    const scope = body.scope ?? cand.suggested_scope;
+    if (!allowedScopes.has(scope)) throw new Error("invalid_scope");
+
+    const effective = body.effective_at ?? now;
+    const maxUntil = addHours(now, 72);
+    let displayUntil =
       body.display_until ?? addHours(effective, ttlHoursForType(type));
+    if (new Date(displayUntil).getTime() > new Date(maxUntil).getTime()) {
+      displayUntil = maxUntil;
+    }
 
     const ev: PublishedEvent = {
       id: uid("evt"),
       provider: cand.provider,
       type,
-      scope: body.scope ?? cand.suggested_scope,
+      scope,
       title:
         body.title ??
         (type === "banked_credit"

@@ -38,19 +38,24 @@ class BoardPageState extends State<BoardPage> {
     });
     try {
       final data = await widget.api.fetchSnapshot();
-      StatsResponse? st;
-      Map<String, dynamic>? mon;
+      // Parallel secondary fetches after snapshot (soft-fail)
+      final secondary = await Future.wait([
+        widget.api.fetchStats().then<Object?>((v) => v).catchError((_) => null),
+        widget.api.fetchMonitor().then<Object?>((v) => v).catchError((_) => null),
+        widget.api
+            .fetchEvents(limit: 60, provider: 'codex')
+            .then<Object?>((v) => v)
+            .catchError((_) => null),
+      ]);
+      final st = secondary[0] is StatsResponse ? secondary[0] as StatsResponse : null;
+      final mon = secondary[1] is Map<String, dynamic>
+          ? secondary[1] as Map<String, dynamic>
+          : null;
       List<double> iv = const [];
-      try {
-        st = await widget.api.fetchStats();
-      } catch (_) {}
-      try {
-        mon = await widget.api.fetchMonitor();
-      } catch (_) {}
-      try {
-        final events = await widget.api.fetchEvents(limit: 60);
+      final events = secondary[2];
+      if (events is TimelineResponse) {
         iv = _intervalsFromEvents(events.items);
-      } catch (_) {}
+      }
       if (!mounted) return;
       setState(() {
         snapshot = data;
@@ -68,10 +73,15 @@ class BoardPageState extends State<BoardPage> {
     }
   }
 
-  /// Days between consecutive confirmed hard resets (oldest → newest, last 10).
+  /// Days between consecutive Codex hard resets (oldest → newest, last 10).
   List<double> _intervalsFromEvents(List<EventData> events) {
     final times = events
-        .where((e) => e.type == 'hard_reset' && !e.retracted)
+        .where(
+          (e) =>
+              e.type == 'hard_reset' &&
+              !e.retracted &&
+              (e.provider == null || e.provider == 'codex'),
+        )
         .map((e) => DateTime.tryParse(e.announcedAt))
         .whereType<DateTime>()
         .toList()

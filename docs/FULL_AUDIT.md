@@ -1,5 +1,6 @@
 # 完整審計報告 — RESET Radar
 
+> **Historical**（2026-07-20 pre-ship 敘事）。**現況真相**見 root `README.md`、`docs/PURPOSE.md`、free-auto pipeline。  
 > 日期：2026-07-20  
 > 範圍：PURPOSE / PLAN / dual-review / 多路探索代理 / 本機與 X·Web 搜尋  
 > agy：環境阻擋 external CLI（僅 probe 成功）；探索代理 ×4 + 主線搜尋已完成  

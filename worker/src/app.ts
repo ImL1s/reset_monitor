@@ -10,11 +10,36 @@ import { computeProviderStats } from "./pipeline/stats.js";
 import type { ProviderId, StatsResponse } from "./types.js";
 
 function envFlag(name: string, fallback = "0"): string {
-  const g = globalThis as Record<string, string | undefined>;
+  const g = globalThis as unknown as Record<string, string | undefined>;
   return g[name] ?? fallback;
 }
 
-/** Fail-closed: only local server sets ADMIN_DEV_BYPASS=1. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Constant-time compare for equal-length UTF-8 secrets. */
+export function timingSafeEqualStr(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ba = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ba.byteLength !== bb.byteLength) return false;
+  let diff = 0;
+  for (let i = 0; i < ba.byteLength; i++) {
+    diff |= ba[i]! ^ bb[i]!;
+  }
+  return diff === 0;
+}
+
+/**
+ * Fail-closed: only local server sets ADMIN_DEV_BYPASS=1.
+ * Production: ADMIN_TOKEN via X-Admin-Token (CF Access JWT not implemented).
+ */
 function isAdmin(c: {
   req: { header: (n: string) => string | undefined };
 }): boolean {
@@ -24,12 +49,18 @@ function isAdmin(c: {
   const expected = envFlag("ADMIN_TOKEN", "");
   if (expected) {
     const got = c.req.header("X-Admin-Token") ?? "";
-    return got.length > 0 && got === expected;
+    if (!got) return false;
+    return timingSafeEqualStr(got, expected);
   }
-  // Production: require CF Access JWT presence — full JWKS verify is W3+
-  // Without token config, deny all writes.
   return false;
 }
+
+const HTML_SECURITY_HEADERS: Record<string, string> = {
+  "Content-Security-Policy":
+    "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+};
 
 function buildSnapshot(now = new Date()): SnapshotResponse {
   const providers = store.listProviders().map((cfg) => {
@@ -62,7 +93,9 @@ export function createApp() {
 
   app.get("/health", (c) => c.json({ ok: true, schema_version: CONFIG.schemaVersion }));
 
-  app.get("/admin", (c) => c.html(ADMIN_HTML));
+  app.get("/admin", (c) =>
+    c.html(ADMIN_HTML, 200, HTML_SECURITY_HEADERS),
+  );
 
   app.get("/v1/snapshot", (c) => {
     return c.json(buildSnapshot(), 200, {
@@ -133,7 +166,10 @@ export function createApp() {
       next_cursor: null,
       has_more: items.length > limit,
     };
-    return c.json(body);
+    return c.json(body, 200, {
+      "Cache-Control":
+        "public, max-age=15, s-maxage=30, stale-while-revalidate=60",
+    });
   });
 
   // --- Admin ---
@@ -262,13 +298,15 @@ export function createApp() {
           (p.active_event ? ` · ${p.active_event.title}` : ""),
       )
       .join(" · ");
-    const desc = lines || "RESET Radar — zero-auth public usage reset board";
+    const desc = escapeHtml(
+      lines || "RESET Radar — zero-auth public usage reset board",
+    );
     const html = `<!doctype html>
 <html><head>
 <meta charset="utf-8"/>
 <title>RESET Radar</title>
 <meta property="og:title" content="RESET Radar"/>
-<meta property="og:description" content="${desc.replace(/"/g, "'")}"/>
+<meta property="og:description" content="${desc}"/>
 <meta property="og:type" content="website"/>
 <meta name="twitter:card" content="summary"/>
 </head>
@@ -278,7 +316,7 @@ export function createApp() {
 <p><a href="/">Open board</a></p>
 <p><small>Independent utility. Not affiliated with OpenAI, Anthropic, or other AI providers. Global reset events do not guarantee your personal quota.</small></p>
 </body></html>`;
-    return c.html(html);
+    return c.html(html, 200, HTML_SECURITY_HEADERS);
   });
 
   app.get("/admin/v1/allowlist", (c) => {
@@ -321,12 +359,17 @@ export function createApp() {
     });
   });
 
-  /** Public: monitoring mode (no secrets). */
+  /** Public: monitoring mode (no secrets / no raw adapter errors). */
   app.get("/v1/monitor", (c) => {
     const last = store.lastPipelineReport as {
       ran_at?: string;
       source?: string;
-      accounts?: Array<{ source?: string; ok?: boolean }>;
+      accounts?: Array<{
+        handle?: string;
+        source?: string;
+        ok?: boolean;
+        error?: string;
+      }>;
     } | null;
     const sources = (last?.accounts ?? [])
       .map((a) => a.source)
@@ -335,6 +378,11 @@ export function createApp() {
       sources.length > 0
         ? [...new Set(sources)].join("+")
         : last?.source ?? "multi";
+    const publicAccounts = (last?.accounts ?? []).map((a) => ({
+      handle: a.handle,
+      source: a.source,
+      ok: !!a.ok,
+    }));
     return c.json({
       mode: "free_auto",
       source: sourceSummary,
@@ -345,7 +393,7 @@ export function createApp() {
         ? {
             ran_at: last.ran_at,
             source: last.source,
-            accounts: last.accounts,
+            accounts: publicAccounts,
           }
         : null,
     });
