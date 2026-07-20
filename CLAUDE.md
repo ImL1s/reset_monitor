@@ -109,6 +109,23 @@ Rules:
   driven by the language menu in the app bar. Adding a language = drop a new `app_<locale>.arb` and
   add it to `kPickerLocales`.
 
+## Web SEO / bot-render (Cloudflare Pages)
+
+Flutter Web (CanvasKit) is invisible to crawlers and to AI answer engines
+(GPTBot/ClaudeBot/PerplexityBot run ~0% JS). Two layers fix this:
+- `app/web/index.html` bakes real crawlable content (H1/H2 + `<noscript>`) into the
+  pre-paint container + full SEO head (canonical, OG, JSON-LD WebApplication/FAQPage).
+  `app/web/robots.txt`, `sitemap.xml`, `llms.txt` are static.
+- `app/web/_worker.js` — **Cloudflare Pages advanced mode**. UA-sniffs bots and serves
+  the Worker `GET /share` (a keyword-rich, JSON-LD, **live dated status** prerender that
+  is a pure store read — NO LLM / no OpenCode key); humans get the SPA via
+  `env.ASSETS.fetch`. `worker/src/app.ts` `/share` is the prerender source.
+- **Deploy gotcha:** the Pages deploy MUST ship `build/web/_worker.js` (advanced mode) —
+  the `functions/` directory form is NOT compiled by direct `wrangler pages deploy`. Ensure
+  `_worker.js` lands in `build/web/` (cp it in if `flutter build web` drops the `_`-prefixed
+  file) before `wrangler pages deploy build/web`. Verify: `curl -A Googlebot <url>/` returns
+  the `x-prerender` header + dated status; a normal UA returns `flutter_bootstrap.js`.
+
 ## Conventions
 
 - Product UI is fully localized (see above); source ARB copy and most docs are authored **繁中-first**.
