@@ -1,6 +1,30 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../theme/radar_theme.dart';
+
+/// Localized status label. [StatusVisual.forStatus] keeps a stable English
+/// label for logic/tests; UI copy is resolved here so it follows the locale.
+String statusLabelL10n(AppL10n l, String status) {
+  switch (status) {
+    case 'active_confirmed':
+      return l.statusActiveConfirmed;
+    case 'active_confirmed_degraded':
+      return l.statusDegraded;
+    case 'detected_pending':
+      return l.statusPending;
+    case 'no_recent_confirmed':
+      return l.statusNoRecent;
+    case 'source_unhealthy':
+      return l.statusUnhealthy;
+    case 'cold_start':
+      return l.statusColdStart;
+    case 'not_monitored':
+      return l.statusNotMonitored;
+    default:
+      return status;
+  }
+}
 
 class StatusVisual {
   StatusVisual({
@@ -75,8 +99,9 @@ class StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final v = StatusVisual.forStatus(status);
+    final label = statusLabelL10n(AppL10n.of(context), status);
     return Semantics(
-      label: 'Status: ${v.label}',
+      label: 'Status: $label',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -91,7 +116,7 @@ class StatusPill extends StatelessWidget {
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                v.label,
+                label,
                 style: TextStyle(
                   color: v.color,
                   fontWeight: FontWeight.w700,

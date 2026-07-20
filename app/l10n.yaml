@@ -1,0 +1,7 @@
+# Localization codegen config (flutter gen-l10n).
+# Output (AppL10n) is written into lib/l10n/ alongside the .arb sources.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppL10n
+nullable-getter: false

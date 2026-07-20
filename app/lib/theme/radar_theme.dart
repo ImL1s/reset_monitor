@@ -14,7 +14,18 @@ abstract final class RadarColors {
   static const danger = Color(0xFFF43F5E);
   static const info = Color(0xFF38BDF8);
   static const focus = Color(0xFF38BDF8);
+
+  /// Raised "verdict" surface — one step brighter than [surface] so the
+  /// single hero answer reads as the loudest element on the board.
+  static const surfaceHi = Color(0xFF16202E);
+
+  /// Brighter green tuned for small text / numbers on dark surfaces (≥4.5:1).
+  static const accentText = Color(0xFF4ADE80);
 }
+
+/// Monospace style for data, timestamps and the big "Xd ago" number.
+/// Gives the board a precise developer-console feel (JetBrains Mono).
+TextStyle radarMono(TextStyle? base) => GoogleFonts.jetBrainsMono(textStyle: base);
 
 /// Phone <600 · Tablet 600–1023 · Desktop ≥1024
 abstract final class RadarBreakpoints {

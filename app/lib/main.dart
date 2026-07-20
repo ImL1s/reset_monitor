@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'l10n/app_localizations.dart';
 import 'pages/about_page.dart';
 import 'pages/board_page.dart';
 import 'pages/timeline_page.dart';
+import 'services/locale_controller.dart';
 import 'services/radar_api.dart';
 import 'theme/radar_theme.dart';
 import 'widgets/responsive_shell.dart';
@@ -26,20 +28,28 @@ class ResetRadarApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'RESET Radar',
-      debugShowCheckedModeBanner: false,
-      // ThemeBuilder reads MediaQuery.disableAnimations after binding exists.
-      builder: (context, child) {
-        final reduceMotion = MediaQuery.disableAnimationsOf(context);
-        final theme = buildRadarTheme(reduceMotion: reduceMotion);
-        return Theme(
-          data: theme,
-          child: child ?? const SizedBox.shrink(),
+    return ValueListenableBuilder<Locale?>(
+      valueListenable: localeController,
+      builder: (context, locale, _) {
+        return MaterialApp(
+          title: 'RESET Radar',
+          debugShowCheckedModeBanner: false,
+          locale: locale,
+          localizationsDelegates: AppL10n.localizationsDelegates,
+          supportedLocales: AppL10n.supportedLocales,
+          // ThemeBuilder reads MediaQuery.disableAnimations after binding exists.
+          builder: (context, child) {
+            final reduceMotion = MediaQuery.disableAnimationsOf(context);
+            final theme = buildRadarTheme(reduceMotion: reduceMotion);
+            return Theme(
+              data: theme,
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
+          theme: buildRadarTheme(reduceMotion: false),
+          home: const HomeShell(),
         );
       },
-      theme: buildRadarTheme(reduceMotion: false),
-      home: const HomeShell(),
     );
   }
 }
@@ -67,25 +77,26 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    const destinations = [
+    final l = AppL10n.of(context);
+    final destinations = [
       NavigationDestination(
-        icon: Icon(Icons.grid_view_rounded),
-        selectedIcon: Icon(Icons.grid_view_rounded),
-        label: 'Board',
+        icon: const Icon(Icons.grid_view_rounded),
+        selectedIcon: const Icon(Icons.grid_view_rounded),
+        label: l.navBoard,
       ),
       NavigationDestination(
-        icon: Icon(Icons.timeline_rounded),
-        selectedIcon: Icon(Icons.timeline_rounded),
-        label: 'Timeline',
+        icon: const Icon(Icons.timeline_rounded),
+        selectedIcon: const Icon(Icons.timeline_rounded),
+        label: l.navTimeline,
       ),
       NavigationDestination(
-        icon: Icon(Icons.info_outline_rounded),
-        selectedIcon: Icon(Icons.info_rounded),
-        label: 'About',
+        icon: const Icon(Icons.info_outline_rounded),
+        selectedIcon: const Icon(Icons.info_rounded),
+        label: l.navAbout,
       ),
     ];
 
-    const titles = ['Board', 'Timeline', 'About'];
+    final titles = [l.navBoard, l.navTimeline, l.navAbout];
 
     return ResponsiveShell(
       index: index,
@@ -93,9 +104,10 @@ class _HomeShellState extends State<HomeShell> {
       destinations: destinations,
       title: 'RESET Radar · ${titles[index]}',
       actions: [
+        const _LanguageMenu(),
         if (index < 2)
           IconButton(
-            tooltip: 'Refresh',
+            tooltip: l.refresh,
             onPressed: _refreshCurrent,
             icon: const Icon(Icons.refresh_rounded),
           ),
@@ -108,6 +120,49 @@ class _HomeShellState extends State<HomeShell> {
           AboutPage(apiBase: api.baseUrl),
         ],
       ),
+    );
+  }
+}
+
+/// Language picker. Index-based values avoid PopupMenuButton's null-value
+/// gotcha (a `null` menu value never fires onSelected), so "System default"
+/// (a null locale) stays selectable.
+class _LanguageMenu extends StatelessWidget {
+  const _LanguageMenu();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppL10n.of(context);
+    final current = localeController.value;
+    return PopupMenuButton<int>(
+      tooltip: l.language,
+      icon: const Icon(Icons.translate_rounded),
+      color: RadarColors.elevated,
+      onSelected: (i) => localeController.value = kPickerLocales[i],
+      itemBuilder: (context) => [
+        for (var i = 0; i < kPickerLocales.length; i++)
+          PopupMenuItem<int>(
+            value: i,
+            child: Row(
+              children: [
+                Icon(
+                  sameLocaleChoice(current, kPickerLocales[i])
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 18,
+                  color: sameLocaleChoice(current, kPickerLocales[i])
+                      ? RadarColors.accent
+                      : RadarColors.muted,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  localeLabel(l, kPickerLocales[i]),
+                  style: const TextStyle(color: RadarColors.text),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

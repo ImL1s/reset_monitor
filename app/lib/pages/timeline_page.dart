@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/api_models.dart';
 import '../services/radar_api.dart';
 import '../theme/radar_theme.dart';
@@ -48,6 +49,7 @@ class TimelinePageState extends State<TimelinePage> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppL10n.of(context);
     final width = MediaQuery.sizeOf(context).width;
     final pad = RadarBreakpoints.pagePadding(width);
     final items = data?.items ?? [];
@@ -65,35 +67,32 @@ class TimelinePageState extends State<TimelinePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Confirmed timeline',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
+                  Text(l.timelineTitle,
+                      style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: 4),
-                  Text(
-                    'Only auto-confirmed public resets (last 90 days). '
-                    'Pending detections stay on the Board — they never appear here.',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  Text(l.timelineSubtitle,
+                      style: Theme.of(context).textTheme.bodyMedium),
                   if (data != null)
                     Text(
-                      'as of ${formatRadarTime(data!.asOf)}',
-                      style: Theme.of(context).textTheme.labelSmall,
+                      l.asOf(formatRadarTime(data!.asOf)),
+                      style: radarMono(Theme.of(context).textTheme.labelSmall)
+                          .copyWith(color: RadarColors.muted),
                     ),
                 ],
               ),
             ),
           ),
           if (loading && items.isEmpty)
-            const SliverFillRemaining(
+            SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: RadarColors.accent),
-                    SizedBox(height: 16),
-                    Text('Loading events…', style: TextStyle(color: RadarColors.muted)),
+                    const CircularProgressIndicator(color: RadarColors.accent),
+                    const SizedBox(height: 16),
+                    Text(l.loadingEvents,
+                        style: const TextStyle(color: RadarColors.muted)),
                   ],
                 ),
               ),
@@ -107,14 +106,15 @@ class TimelinePageState extends State<TimelinePage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.cloud_off_rounded, color: RadarColors.danger, size: 40),
+                      const Icon(Icons.cloud_off_rounded,
+                          color: RadarColors.danger, size: 40),
                       const SizedBox(height: 12),
                       Text(error!, textAlign: TextAlign.center),
                       const SizedBox(height: 16),
                       FilledButton.icon(
                         onPressed: refresh,
                         icon: const Icon(Icons.refresh_rounded),
-                        label: const Text('Retry'),
+                        label: Text(l.retry),
                       ),
                     ],
                   ),
@@ -125,27 +125,23 @@ class TimelinePageState extends State<TimelinePage> {
             SliverFillRemaining(
               hasScrollBody: false,
               child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.inbox_outlined,
-                      size: 40,
-                      color: RadarColors.muted.withValues(alpha: 0.8),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No confirmed events yet',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'When rules (or optional LLM) auto-confirm a public post, it shows up here. '
-                      'Amber “detected, not confirmed” items stay on the Board only.',
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ],
+                child: Padding(
+                  padding: EdgeInsets.all(pad),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.inbox_outlined,
+                          size: 40,
+                          color: RadarColors.muted.withValues(alpha: 0.8)),
+                      const SizedBox(height: 12),
+                      Text(l.timelineEmptyTitle,
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(l.timelineEmptyBody,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium),
+                    ],
+                  ),
                 ),
               ),
             )
@@ -193,6 +189,7 @@ class _TimelineTileState extends State<_TimelineTile> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppL10n.of(context);
     final event = widget.event;
     final showConnector = widget.showConnector;
     final retracted = event.retracted;
@@ -282,22 +279,21 @@ class _TimelineTileState extends State<_TimelineTile> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              _chip(
-                                (event.provider ?? 'event').toUpperCase(),
-                                RadarColors.info,
-                              ),
-                              _chip(
-                                _typeLabel(event.type),
-                                _typeColor(event.type),
-                              ),
+                              _chip((event.provider ?? 'event').toUpperCase(),
+                                  RadarColors.info),
+                              _chip(_typeLabel(l, event.type),
+                                  _typeColor(event.type)),
                               if (retracted)
-                                _chip('RETRACTED', RadarColors.danger),
+                                _chip(l.typeRetracted, RadarColors.danger),
                             ],
                           ),
                           const SizedBox(height: 10),
                           Text(
                             event.title,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
                                   decoration: retracted
                                       ? TextDecoration.lineThrough
                                       : null,
@@ -306,8 +302,10 @@ class _TimelineTileState extends State<_TimelineTile> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'announced ${formatRadarTime(event.announcedAt)}',
-                            style: Theme.of(context).textTheme.labelSmall,
+                            l.announcedAt(formatRadarTime(event.announcedAt)),
+                            style:
+                                radarMono(Theme.of(context).textTheme.labelSmall)
+                                    .copyWith(color: RadarColors.muted),
                           ),
                           if (event.sourceUrl.isNotEmpty) ...[
                             const SizedBox(height: 8),
@@ -315,10 +313,9 @@ class _TimelineTileState extends State<_TimelineTile> {
                               event.sourceUrl,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: RadarColors.info,
-                                fontSize: 12,
-                              ),
+                              style: radarMono(
+                                      Theme.of(context).textTheme.labelSmall)
+                                  .copyWith(color: RadarColors.info),
                             ),
                           ],
                         ],
@@ -353,12 +350,12 @@ class _TimelineTileState extends State<_TimelineTile> {
     );
   }
 
-  String _typeLabel(String type) {
+  String _typeLabel(AppL10n l, String type) {
     switch (type) {
       case 'banked_credit':
-        return 'BANKED';
+        return l.typeBanked;
       case 'hard_reset':
-        return 'HARD RESET';
+        return l.typeHardReset;
       default:
         return type.toUpperCase();
     }

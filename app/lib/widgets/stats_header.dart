@@ -1,101 +1,69 @@
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/api_models.dart';
 import '../theme/radar_theme.dart';
 
-class StatsHeader extends StatelessWidget {
-  const StatsHeader({super.key, required this.stats, this.monitor});
+/// Compact, low-noise stats line for the hero: a few localized facts joined by
+/// dot separators, numbers in mono. Deliberately not a row of bordered pills —
+/// it reads as one scannable status line, not "chip soup".
+class StatsStrip extends StatelessWidget {
+  const StatsStrip({super.key, required this.stats, this.monitor});
 
   final ProviderStats stats;
   final Map<String, dynamic>? monitor;
 
-  String _autoLine() {
-    if (monitor == null) return '';
-    final auto = monitor!['auto_publish'] == true;
-    final source = monitor!['source']?.toString() ?? '—';
-    final mode = monitor!['mode']?.toString() ?? '';
-    final on = mode == 'free_auto' || auto;
-    return 'Auto monitoring: ${on ? "ON" : "OFF"} · every ~10 min · '
-        'rules first, optional LLM · auto-publish: ${auto ? "ON" : "OFF"} · '
-        'source $source';
-  }
+  String _num(double? v) => v == null ? '—' : v.toStringAsFixed(v < 10 ? 1 : 0);
 
   @override
   Widget build(BuildContext context) {
-    // Prefer Codex-scoped chips when comparing to codex-resets-style clocks
-    final chips = <(IconData, String, Color)>[
-      (
-        Icons.bolt_rounded,
-        '${stats.totalConfirmed} strict confirms',
-        RadarColors.accent,
-      ),
-      (
-        Icons.hourglass_bottom_rounded,
-        stats.daysSinceLast == null
-            ? 'no last public reset'
-            : '${stats.daysSinceLast}d since last blessing',
-        RadarColors.warning,
-      ),
-      (
-        Icons.timeline_rounded,
-        stats.avgIntervalDays == null
-            ? 'avg —'
-            : 'avg ${stats.avgIntervalDays}d (strict set)',
-        RadarColors.info,
-      ),
-      (
-        Icons.water_drop_outlined,
-        stats.longestDroughtDays == null
-            ? 'drought —'
-            : 'longest gap ${stats.longestDroughtDays}d',
-        RadarColors.muted,
-      ),
-      (
-        Icons.savings_outlined,
-        '${stats.bankedCreditCount} banked',
-        RadarColors.info,
-      ),
+    final l = AppL10n.of(context);
+    final facts = <String>[
+      l.statConfirms(stats.totalConfirmed),
+      stats.avgIntervalDays == null ? l.statAvgNone : l.statAvg(_num(stats.avgIntervalDays)),
+      stats.longestDroughtDays == null
+          ? l.statDroughtNone
+          : l.statDrought(_num(stats.longestDroughtDays)),
+      if (stats.bankedCreditCount > 0) l.statBanked(stats.bankedCreditCount),
     ];
+
+    final monoMuted = radarMono(Theme.of(context).textTheme.bodySmall)
+        .copyWith(color: RadarColors.muted, height: 1.4);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
           spacing: 10,
-          runSpacing: 10,
+          runSpacing: 4,
           children: [
-            for (final c in chips)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: RadarColors.bg.withValues(alpha: 0.55),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: RadarColors.border),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(c.$1, size: 16, color: c.$3),
-                    const SizedBox(width: 8),
-                    Text(
-                      c.$2,
-                      style: TextStyle(
-                        color: c.$3,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            for (var i = 0; i < facts.length; i++) ...[
+              Text(facts[i], style: monoMuted),
+              if (i < facts.length - 1)
+                Text('·', style: monoMuted.copyWith(color: RadarColors.border)),
+            ],
           ],
         ),
         if (monitor != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            _autoLine(),
-            style: Theme.of(context).textTheme.labelSmall,
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                (monitor!['auto_publish'] == true || monitor!['mode'] == 'free_auto')
+                    ? Icons.sensors_rounded
+                    : Icons.sensors_off_rounded,
+                size: 14,
+                color: RadarColors.muted,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  l.autoMonitoring,
+                  style: Theme.of(context).textTheme.labelSmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ],
       ],

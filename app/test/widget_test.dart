@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:reset_radar/l10n/app_localizations.dart';
 import 'package:reset_radar/main.dart';
 import 'package:reset_radar/theme/radar_theme.dart';
 import 'package:reset_radar/widgets/responsive_shell.dart';
@@ -100,5 +101,34 @@ void main() {
     );
     expect(formatRadarTime(''), '—');
     expect(formatRadarTime('2026-07-20T12:00:00.000Z').length, greaterThan(8));
+  });
+
+  Future<void> pumpLocalized(WidgetTester tester, Locale locale) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: locale,
+        localizationsDelegates: AppL10n.localizationsDelegates,
+        supportedLocales: AppL10n.supportedLocales,
+        home: Builder(
+          builder: (context) => Text(AppL10n.of(context).verdictCalmTitle),
+        ),
+      ),
+    );
+    await tester.pump();
+  }
+
+  testWidgets('localizes to Traditional Chinese', (tester) async {
+    await pumpLocalized(tester, const Locale('zh'));
+    expect(find.text('目前平靜'), findsOneWidget);
+  });
+
+  testWidgets('localizes to Japanese', (tester) async {
+    await pumpLocalized(tester, const Locale('ja'));
+    expect(find.text('現在は静穏'), findsOneWidget);
+  });
+
+  testWidgets('localizes to English', (tester) async {
+    await pumpLocalized(tester, const Locale('en'));
+    expect(find.text('All calm'), findsOneWidget);
   });
 }

@@ -64,6 +64,7 @@ class ResponsiveShell extends StatelessWidget {
                   Flexible(
                     child: Text(
                       title,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -165,6 +166,8 @@ class ResponsiveShell extends StatelessWidget {
                               Expanded(
                                 child: Text(
                                   title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: Theme.of(context).textTheme.headlineSmall,
                                 ),
                               ),

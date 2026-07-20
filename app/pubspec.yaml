@@ -30,6 +30,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   http: ^1.2.2
   google_fonts: ^6.2.1
   url_launcher: ^6.3.1
@@ -76,6 +79,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Generate localizations (AppL10n) from lib/l10n/*.arb via l10n.yaml.
+  generate: true
 
   assets:
     - assets/icon/icon.png
