@@ -123,20 +123,27 @@ export interface ProviderRuntimeMeta {
 
 export type ForecastBand = "low" | "medium" | "high" | "insufficient_data";
 
+export type ForecastMethod = "deterministic_v1" | "renewal_survival_v2";
+
 export interface ForecastFactorDto {
-  id: string; // baseline | elapsed | cooldown | future_promise | floor | freshness
+  id: string; // renewal_k | conditional_elapsed | sample | future_promise | freshness | empirical_baseline
   label: string; // 繁中固定字串
-  delta: number; // 整數百分點貢獻，可負
+  delta: number; // 整數百分點貢獻，可負（說明性因子用 0）
 }
 
 export interface Next48hForecastDto {
   window_hours: 48;
   /** 0–100 integer; null when insufficient_data */
   probability: number | null;
+  /** jackknife uncertainty band (integers); null when insufficient_data */
+  probability_lo?: number | null;
+  probability_hi?: number | null;
+  /** hard_reset samples used to fit the renewal model */
+  sample_size?: number;
   band: ForecastBand;
   factors: ForecastFactorDto[];
   calculated_at: string; // ISO
-  method: "deterministic_v1";
+  method: ForecastMethod;
   disclaimer: string; // 固定：啟發式，非官方、非確認
   /** optional evidence for future_promise */
   evidence_urls?: string[];

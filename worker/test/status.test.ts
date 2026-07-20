@@ -291,7 +291,7 @@ describe("deriveDisplayStatus", () => {
     assert.equal(card.display_status, "no_recent_confirmed");
     assert.ok(card.next_48h);
     assert.equal(card.next_48h!.window_hours, 48);
-    assert.equal(card.next_48h!.method, "deterministic_v1");
+    assert.equal(card.next_48h!.method, "renewal_survival_v2");
     assert.notEqual(card.next_48h!.band, "insufficient_data");
     assert.equal(typeof card.next_48h!.probability, "number");
   });

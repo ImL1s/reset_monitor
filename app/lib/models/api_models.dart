@@ -50,17 +50,26 @@ class Next48hForecast {
     required this.method,
     required this.disclaimer,
     this.probability,
+    this.probabilityLo,
+    this.probabilityHi,
+    this.sampleSize,
     this.evidenceUrls,
   });
 
   final int windowHours;
   final int? probability;
+  final int? probabilityLo;
+  final int? probabilityHi;
+  final int? sampleSize;
   final String band;
   final List<ForecastFactor> factors;
   final String calculatedAt;
   final String method;
   final String disclaimer;
   final List<String>? evidenceUrls;
+
+  /// Complement probability shown for honesty (weather-PoP style).
+  int? get notProbability => probability == null ? null : 100 - probability!;
 
   factory Next48hForecast.fromJson(Map<String, dynamic> json) {
     final rawFactors = (json['factors'] as List? ?? []).cast<dynamic>();
@@ -74,10 +83,13 @@ class Next48hForecast {
     return Next48hForecast(
       windowHours: (json['window_hours'] as num?)?.toInt() ?? 48,
       probability: (json['probability'] as num?)?.toInt(),
+      probabilityLo: (json['probability_lo'] as num?)?.toInt(),
+      probabilityHi: (json['probability_hi'] as num?)?.toInt(),
+      sampleSize: (json['sample_size'] as num?)?.toInt(),
       band: json['band'] as String? ?? 'insufficient_data',
       factors: factors,
       calculatedAt: json['calculated_at'] as String? ?? '',
-      method: json['method'] as String? ?? 'deterministic_v1',
+      method: json['method'] as String? ?? 'renewal_survival_v2',
       disclaimer: json['disclaimer'] as String? ?? '',
       evidenceUrls: urls,
     );

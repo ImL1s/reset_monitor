@@ -349,6 +349,12 @@ class _Next48hBlock extends StatelessWidget {
         : forecast.probability == null
             ? _bandLabel()
             : l.next48hLine(_bandLabel(), forecast.probability!);
+    final metaBits = <String>[
+      if (forecast.probabilityLo != null && forecast.probabilityHi != null)
+        l.next48hRange(forecast.probabilityLo!, forecast.probabilityHi!),
+      if ((forecast.sampleSize ?? 0) > 0) l.next48hBasis(forecast.sampleSize!),
+    ];
+    final metaLine = metaBits.join(' · ');
 
     return Padding(
       padding: const EdgeInsets.only(top: 14),
@@ -386,6 +392,24 @@ class _Next48hBlock extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+            // Complement probability — honesty (weather-PoP pattern).
+            if (!insufficient && forecast.notProbability != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                l.next48hComplement(forecast.notProbability!),
+                style: radarMono(t.labelSmall).copyWith(color: RadarColors.muted),
+              ),
+            ],
+            // Uncertainty band + sample basis (auditable).
+            if (!insufficient && metaLine.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                metaLine,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: radarMono(t.labelSmall).copyWith(color: RadarColors.muted),
+              ),
+            ],
             const SizedBox(height: 4),
             // Localized default (not the server's fixed zh string) so the whole
             // card stays in the UI language.
