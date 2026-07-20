@@ -30,8 +30,9 @@ Thumbs.db
 .omx/
 .omg/
 
-# Worker
+# Worker / Pages
 worker/.wrangler/
+app/.wrangler/
 worker/dist/
 
 # Coverage
