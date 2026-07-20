@@ -1,5 +1,5 @@
 import { createApp } from "./app.js";
-import { seedHistoricalFixtures } from "./seed.js";
+import { clampSeedHistoryTtl, seedHistoricalFixtures } from "./seed.js";
 import { store } from "./store.js";
 import { loadStoreFromKv, saveStoreToKv } from "./persist.js";
 import { runAutoCycle } from "./pipeline/run_cycle.js";
@@ -70,6 +70,10 @@ async function ensureHydrated(env: Env): Promise<void> {
     !loaded || [...store.events.values()].filter((e) => !e.retracted_at).length < 10;
   if (needSeed) {
     seedHistoricalFixtures();
+  }
+  // Repair any previous demo force-green on seed_history events
+  const clamped = clampSeedHistoryTtl();
+  if (needSeed || clamped > 0) {
     await saveStoreToKv(env.STATE, store);
   }
 }

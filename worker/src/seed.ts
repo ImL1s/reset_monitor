@@ -89,14 +89,23 @@ export function seedHistoricalFixtures(): void {
     });
   }
 
-  // Keep most recent seed green for demo if still within window relative to seed time
-  const latest = "2078320950488297917";
-  const latestEv = [...store.events.values()].find(
-    (e) => e.source_post_id === latest && e.provider === "codex",
-  );
-  if (latestEv) {
-    latestEv.display_until = addHours(nowIso(), 24);
-    latestEv.verified_at = latestEv.effective_at;
-    store.events.set(latestEv.id, latestEv);
+  // Do NOT force-extend historical TTL (false green). History uses
+  // display_until = announced_at + TTL only; active green requires real now < until.
+}
+
+/** Repair any prior force-green: clamp seed_history events to natural TTL. */
+export function clampSeedHistoryTtl(): number {
+  let n = 0;
+  for (const [id, ev] of store.events) {
+    if (ev.decision_by !== "seed_history" && ev.decision_by !== "seed@local") {
+      continue;
+    }
+    const natural = addHours(ev.effective_at, 24);
+    if (ev.display_until !== natural) {
+      ev.display_until = natural;
+      store.events.set(id, ev);
+      n += 1;
+    }
   }
+  return n;
 }
