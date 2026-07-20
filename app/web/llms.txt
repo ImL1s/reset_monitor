@@ -1,0 +1,19 @@
+# RESET Radar
+
+> Zero-login board tracking whether OpenAI Codex / ChatGPT Work and Anthropic
+> Claude have publicly RESET usage limits (staff-announced, provider-wide
+> "hard resets"), plus a heuristic 48-hour forecast with source evidence.
+> Independent utility; not affiliated with OpenAI or Anthropic. Updated in real time.
+
+## Core
+- [Live reset status](https://reset-radar-web.pages.dev/): current public-reset state for Codex and Claude, time since the last public reset, and a 48h forecast.
+- [Prerendered status + FAQ](https://reset-radar.taiwan-traffic.workers.dev/share): dated, plain-language status for each provider.
+
+## Data (public API, no auth)
+- [Snapshot JSON](https://reset-radar.taiwan-traffic.workers.dev/v1/snapshot): per-provider status cards with display_status.
+- [Stats JSON](https://reset-radar.taiwan-traffic.workers.dev/v1/stats): reset counts, average interval, longest drought (hard_reset only).
+- [Events JSON](https://reset-radar.taiwan-traffic.workers.dev/v1/events): confirmed public-reset timeline.
+
+## Notes
+- "Public reset" = a staff/global announcement that many paid users had usage replenished. It does not guarantee your personal quota is full.
+- The 48h forecast is a deterministic heuristic (Weibull renewal survival) — not official, never a green light.

@@ -287,34 +287,94 @@ export function createApp() {
     }
   });
 
-  // Minimal share / OG HTML for bots
+  // Prerendered, crawlable HTML for bots (Google + AI answer engines).
+  // Pure store read — no LLM/pipeline. Fresh, dated status is the GEO lever.
   app.get("/share", (c) => {
     const snap = buildSnapshot();
-    const lines = snap.providers
-      .filter((p) => p.monitored)
-      .map(
-        (p) =>
-          `${p.display_name}: ${p.display_status}` +
-          (p.active_event ? ` · ${p.active_event.title}` : ""),
-      )
-      .join(" · ");
-    const desc = escapeHtml(
-      lines || "RESET Radar — zero-auth public usage reset board",
-    );
+    const now = Date.now();
+    const asOf = snap.generated_at || new Date(now).toISOString();
+    const rel = (ms: number): string => {
+      const d = Math.max(0, (now - ms) / 86_400_000);
+      if (d < 1) return `${Math.round(d * 24)}h ago`;
+      if (d < 10) return `${d.toFixed(1)}d ago`;
+      return `${Math.round(d)}d ago`;
+    };
+    const monitored = snap.providers.filter((p) => p.monitored);
+    const items = monitored.map((p) => {
+      const ev = p.active_event ?? p.last_confirmed_event;
+      let when: string;
+      if (
+        p.display_status === "active_confirmed" ||
+        p.display_status === "active_confirmed_degraded"
+      ) {
+        when = "a public RESET is live now";
+      } else if (p.display_status === "active_banked") {
+        when = "a banked reset offer is available (not an auto refill)";
+      } else if (ev) {
+        const t = Date.parse(ev.effective_at || ev.verified_at);
+        when = Number.isFinite(t)
+          ? `last public reset ${rel(t)}`
+          : "no recent public reset";
+      } else {
+        when = "no public reset on record";
+      }
+      return { name: p.display_name, when };
+    });
+    const sentence =
+      items.length > 0
+        ? `As of ${asOf}, ` +
+          items.map((x) => `${x.name} — ${x.when}`).join("; ") +
+          "."
+        : "RESET Radar — zero-login public usage-reset board.";
+    const desc = escapeHtml(sentence);
+    const listHtml = items
+      .map((x) => `<li>${escapeHtml(`${x.name}: ${x.when}`)}</li>`)
+      .join("");
+    const img = "https://reset-radar-web.pages.dev/icons/Icon-512.png";
+    const faq = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "Did Codex or Claude reset usage limits recently?",
+          acceptedAnswer: { "@type": "Answer", text: sentence },
+        },
+        {
+          "@type": "Question",
+          name: "Is a public reset the same as my personal quota refilling?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "No. A confirmed public/global RESET means many paid users had usage replenished; it does not guarantee your individual account is full.",
+          },
+        },
+      ],
+    };
     const html = `<!doctype html>
-<html><head>
+<html lang="en"><head>
 <meta charset="utf-8"/>
-<title>RESET Radar</title>
-<meta property="og:title" content="RESET Radar"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>RESET Radar — did Codex or Claude reset usage limits? Live status</title>
+<meta name="description" content="${desc}"/>
+<link rel="canonical" href="https://reset-radar-web.pages.dev/"/>
+<meta property="og:title" content="RESET Radar — did Codex or Claude reset usage limits?"/>
 <meta property="og:description" content="${desc}"/>
 <meta property="og:type" content="website"/>
+<meta property="og:url" content="https://reset-radar-web.pages.dev/"/>
+<meta property="og:site_name" content="RESET Radar"/>
+<meta property="og:image" content="${img}"/>
 <meta name="twitter:card" content="summary"/>
+<meta name="twitter:image" content="${img}"/>
+<script type="application/ld+json">${JSON.stringify(faq)}</script>
 </head>
 <body>
-<h1>RESET Radar</h1>
+<h1>RESET Radar — has your AI coding tool reset its usage limits?</h1>
 <p>${desc}</p>
-<p><a href="/">Open board</a></p>
-<p><small>Independent utility. Not affiliated with OpenAI, Anthropic, or other AI providers. Global reset events do not guarantee your personal quota.</small></p>
+<h2>Current public-reset status</h2>
+<ul>${listHtml}</ul>
+<p>Last updated: <time datetime="${escapeHtml(asOf)}">${escapeHtml(asOf)}</time>.</p>
+<p><a href="https://reset-radar-web.pages.dev/">Open the live board</a></p>
+<p><small>Independent utility. Not affiliated with OpenAI, Anthropic, xAI, Moonshot, z.ai, or Google. A confirmed global reset does not guarantee your personal quota is full.</small></p>
 </body></html>`;
     return c.html(html, 200, HTML_SECURITY_HEADERS);
   });
