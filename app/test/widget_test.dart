@@ -131,4 +131,21 @@ void main() {
     await pumpLocalized(tester, const Locale('en'));
     expect(find.text('All calm'), findsOneWidget);
   });
+
+  testWidgets('active_banked status is localized, not a raw enum', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppL10n.localizationsDelegates,
+        supportedLocales: AppL10n.supportedLocales,
+        home: Builder(
+          builder: (context) =>
+              Text(statusLabelL10n(AppL10n.of(context), 'active_banked')),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('active_banked'), findsNothing);
+    expect(find.text('現在：補發券 · 非自動補額'), findsOneWidget);
+  });
 }

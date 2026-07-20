@@ -91,6 +91,7 @@
 
   "statusActiveConfirmed": "现在：有 · 公开 RESET",
   "statusDegraded": "现在：有 · 来源延迟",
+  "statusActiveBanked": "现在：补发券 · 非自动补额",
   "statusPending": "现在：无 · 仅弱信号",
   "statusNoRecent": "现在：无",
   "statusUnhealthy": "监控中断",

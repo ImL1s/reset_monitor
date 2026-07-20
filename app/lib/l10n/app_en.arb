@@ -108,6 +108,7 @@
 
   "statusActiveConfirmed": "NOW: YES · public RESET",
   "statusDegraded": "NOW: YES · feed lag",
+  "statusActiveBanked": "NOW: banked offer · not auto refill",
   "statusPending": "NOW: NO · weak signal only",
   "statusNoRecent": "NOW: NO",
   "statusUnhealthy": "Monitoring interrupted",

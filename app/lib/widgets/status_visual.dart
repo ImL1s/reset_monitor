@@ -11,6 +11,8 @@ String statusLabelL10n(AppL10n l, String status) {
       return l.statusActiveConfirmed;
     case 'active_confirmed_degraded':
       return l.statusDegraded;
+    case 'active_banked':
+      return l.statusActiveBanked;
     case 'detected_pending':
       return l.statusPending;
     case 'no_recent_confirmed':

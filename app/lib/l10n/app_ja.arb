@@ -91,6 +91,7 @@
 
   "statusActiveConfirmed": "現在：あり · 公開 RESET",
   "statusDegraded": "現在：あり · ソース遅延",
+  "statusActiveBanked": "現在：補填オファー · 自動補充ではない",
   "statusPending": "現在：なし · 弱いシグナルのみ",
   "statusNoRecent": "現在：なし",
   "statusUnhealthy": "監視が中断",

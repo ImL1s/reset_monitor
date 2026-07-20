@@ -91,6 +91,7 @@
 
   "statusActiveConfirmed": "現在：有 · 公開 RESET",
   "statusDegraded": "現在：有 · 來源延遲",
+  "statusActiveBanked": "現在：補發券 · 非自動補額",
   "statusPending": "現在：無 · 僅弱訊號",
   "statusNoRecent": "現在：無",
   "statusUnhealthy": "監控中斷",
