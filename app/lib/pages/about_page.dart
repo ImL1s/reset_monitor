@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
 import '../services/radar_api.dart';
 import '../theme/radar_theme.dart';
+
+/// Public source repository (shown as a "Source on GitHub" link).
+const kRepoUrl = 'https://github.com/ImL1s/reset_monitor';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key, required this.apiBase});
@@ -67,6 +71,36 @@ class AboutPage extends StatelessWidget {
                 apiBase,
                 style: radarMono(Theme.of(context).textTheme.bodySmall)
                     .copyWith(color: RadarColors.info),
+              ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () => launchUrl(
+                  Uri.parse(kRepoUrl),
+                  mode: LaunchMode.externalApplication,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.code_rounded,
+                          size: 18, color: RadarColors.info),
+                      const SizedBox(width: 8),
+                      Text(
+                        l.sourceOnGitHub,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: RadarColors.info,
+                              decoration: TextDecoration.underline,
+                              decorationColor: RadarColors.info,
+                            ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.open_in_new_rounded,
+                          size: 14, color: RadarColors.info),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 14),
               Text(

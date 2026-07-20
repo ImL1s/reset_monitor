@@ -109,6 +109,7 @@
   "featureZeroLoginBody": "This board only reads a public API. We never access your AI accounts.",
   "apiBaseTitle": "API base",
   "independentNotice": "Independent utility. Not affiliated with OpenAI, Anthropic, xAI, Moonshot, z.ai, or Google.",
+  "sourceOnGitHub": "Source on GitHub",
   "howToReadTitle": "How to read the board",
   "howToReadBody": "Green = confirmed public RESET. Amber = detected, not confirmed — do not treat as a reset. Timeline only lists confirmed events; pending detections stay on the Board.",
 

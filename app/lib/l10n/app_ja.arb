@@ -89,6 +89,7 @@
   "featureZeroLoginBody": "このボードは公開 API を読み取るだけです。あなたの AI アカウントには一切アクセスしません。",
   "apiBaseTitle": "API アドレス",
   "independentNotice": "独立したツールです。OpenAI、Anthropic、xAI、Moonshot、z.ai、Google とは一切提携していません。",
+  "sourceOnGitHub": "GitHub のソース",
   "howToReadTitle": "ボードの見かた",
   "howToReadBody": "グリーン = 確認済みの公開 RESET。アンバー = 検出済み・未確認 — リセットとみなさないでください。タイムラインは確認済みイベントのみを表示し、保留中の検出はボードに残ります。",
 

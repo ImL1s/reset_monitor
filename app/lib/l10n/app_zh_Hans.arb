@@ -89,6 +89,7 @@
   "featureZeroLoginBody": "这个看板只读取公开 API。我们绝不存取你的 AI 账号。",
   "apiBaseTitle": "API 地址",
   "independentNotice": "独立工具。与 OpenAI、Anthropic、xAI、Moonshot、z.ai、Google 无任何附属关系。",
+  "sourceOnGitHub": "GitHub 源代码",
   "howToReadTitle": "如何看这个看板",
   "howToReadBody": "绿 = 已确认的公开 RESET。琥珀 = 检测到、未确认 — 别当成重置。时间轴只列已确认事件；待确认信号留在看板。",
 
