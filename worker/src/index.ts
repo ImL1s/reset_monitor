@@ -16,6 +16,11 @@ export interface Env {
   TELEGRAM_CHAT_ID?: string;
   LLM_GATE_URL?: string;
   LLM_GATE_TOKEN?: string;
+  LLM_GATE_MODE?: string;
+  OPENCODE_GO_API_KEY?: string;
+  OPENCODE_ZEN_API_KEY?: string;
+  OPENCODE_ZEN_MODEL?: string;
+  OPENCODE_ZEN_BASE?: string;
   STATE?: KVNamespace;
   DB?: D1Database;
 }
@@ -34,6 +39,19 @@ function applyEnv(env: Env): void {
     env.MONITORING_ENABLED ?? "1";
   (globalThis as { LLM_GATE_URL?: string }).LLM_GATE_URL = env.LLM_GATE_URL;
   (globalThis as { LLM_GATE_TOKEN?: string }).LLM_GATE_TOKEN = env.LLM_GATE_TOKEN;
+  (globalThis as { LLM_GATE_MODE?: string }).LLM_GATE_MODE =
+    env.LLM_GATE_MODE ?? "opencode_free_then_go";
+  (globalThis as { OPENCODE_GO_API_KEY?: string }).OPENCODE_GO_API_KEY =
+    env.OPENCODE_GO_API_KEY ??
+    env.OPENCODE_ZEN_API_KEY ??
+    env.LLM_GATE_TOKEN;
+  (globalThis as { OPENCODE_ZEN_API_KEY?: string }).OPENCODE_ZEN_API_KEY =
+    env.OPENCODE_ZEN_API_KEY ?? env.OPENCODE_GO_API_KEY ?? env.LLM_GATE_TOKEN;
+  // Go model/base used only as fallback after free fails
+  (globalThis as { OPENCODE_ZEN_MODEL?: string }).OPENCODE_ZEN_MODEL =
+    env.OPENCODE_ZEN_MODEL ?? "deepseek-v4-flash";
+  (globalThis as { OPENCODE_ZEN_BASE?: string }).OPENCODE_ZEN_BASE =
+    env.OPENCODE_ZEN_BASE ?? "https://opencode.ai/zen/go/v1";
   notifyOutbox.configure({
     botToken: env.TELEGRAM_BOT_TOKEN ?? null,
     chatId: env.TELEGRAM_CHAT_ID ?? null,

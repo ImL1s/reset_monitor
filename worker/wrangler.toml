@@ -18,6 +18,11 @@ ADMIN_DEV_BYPASS = "0"
 # Free-auto: FxTwitter poll + strict auto-green (no paid X API).
 AUTO_PUBLISH = "1"
 MONITORING_ENABLED = "1"
+# LLM second look: Zen free first, Go subscription if free infra fails.
+# Secret: OPENCODE_GO_API_KEY (same key works for Zen free + Go).
+LLM_GATE_MODE = "opencode_free_then_go"
+OPENCODE_ZEN_BASE = "https://opencode.ai/zen/go/v1"
+OPENCODE_ZEN_MODEL = "deepseek-v4-flash"
 
 # Poll allowlisted timelines every 10 minutes
 [triggers]

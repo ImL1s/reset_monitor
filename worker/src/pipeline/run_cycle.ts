@@ -108,6 +108,11 @@ export async function runAutoCycle(
   const g = globalThis as {
     LLM_GATE_URL?: string;
     LLM_GATE_TOKEN?: string;
+    LLM_GATE_MODE?: string;
+    OPENCODE_GO_API_KEY?: string;
+    OPENCODE_ZEN_API_KEY?: string;
+    OPENCODE_ZEN_MODEL?: string;
+    OPENCODE_ZEN_BASE?: string;
   };
 
   for (const acc of accounts) {
@@ -166,26 +171,34 @@ export async function runAutoCycle(
             let gate = shouldAutoPublish(cand);
             let decisionBy = "auto_rules";
 
-            if (
-              !gate.ok &&
-              g.LLM_GATE_URL &&
-              g.LLM_GATE_TOKEN &&
-              cand.rule_hits.length > 0
-            ) {
+            const llmToken =
+              g.OPENCODE_GO_API_KEY ||
+              g.OPENCODE_ZEN_API_KEY ||
+              g.LLM_GATE_TOKEN;
+            // LLM second look: free Zen first, Go only if free infra dies
+            if (!gate.ok && llmToken && cand.status === "pending_review") {
               const j = await llmJudgePromote(cand, {
                 url: g.LLM_GATE_URL,
-                token: g.LLM_GATE_TOKEN,
+                token: llmToken,
+                mode: g.LLM_GATE_MODE ?? "opencode_free_then_go",
+                model: g.OPENCODE_ZEN_MODEL ?? "deepseek-v4-flash",
+                baseUrl: g.OPENCODE_ZEN_BASE ?? "https://opencode.ai/zen/go/v1",
+                freeModel: "deepseek-v4-flash-free",
+                goModel: "deepseek-v4-flash",
+                freeBase: "https://opencode.ai/zen/v1",
+                goBase: "https://opencode.ai/zen/go/v1",
                 fetchImpl: opts.fetchImpl,
               });
               if (j.ok) {
+                const via = j.via ? `:${j.via}` : "";
                 gate = {
                   ok: true,
                   reason: j.reason,
                   type: j.type,
                   title:
                     j.type === "banked_credit"
-                      ? "Banked reset (llm)"
-                      : "Hard reset (llm)",
+                      ? `Banked reset (llm${via})`
+                      : `Hard reset (llm${via})`,
                 };
                 decisionBy = "auto_rules_llm";
               } else {
