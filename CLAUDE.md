@@ -52,11 +52,18 @@ Entry `src/index.ts` exposes `fetch` (HTTP) and `scheduled` (cron `*/10`). Both 
 then `runMonitoringCycle`. The pipeline (`src/pipeline/run_cycle.ts`):
 
 1. Poll allowlisted staff timelines — `sources/fxtwitter.ts` (primary) → `sources/dayclaw.ts` (fallback).
-2. `ingest` (allowlist + classify) → `pipeline/auto_publish.ts` **strict templates**.
+2. `ingest` (allowlist + classify soft funnel) → `pipeline/auto_publish.ts` **strict templates**.
+   Soft funnel must be ≥ `CODEX_STRONG` so true hard posts reach the gate (e.g. `new usage reset` /
+   `usage reset for paid`; never bare `usage reset` alone in soft — that only widens the LLM surface).
 3. On template miss, `pipeline/llm_gate.ts` asks an LLM (OpenCode Zen **free** → Go subscription only
-   if the free tier has an *infra* failure). LLM can never green a signal that fails the rule floor.
-4. Outcome: `confirm` (green) | `soft-pending` (amber, not a RESET) | `hard-reject`.
-5. `notify.ts` Telegram outbox (only if secrets set) → persist store to KV (`persist.ts`).
+   if the free tier has an *infra* failure). LLM can never green a signal that fails the rule floor,
+   and never overrides hard-stops (`negation` / `hedge_speculation` / `question_teaser` /
+   `scheduled_incoming` / `partial_or_promo`).
+4. Duplicate rejects: infra soft-rejects may requeue; `excluded_context` may requeue only if
+   re-classify now passes (`store.requeueExcludedIfClassifyPasses`). Quote/RT/reply/teaser/negation
+   stay dead.
+5. Outcome: `confirm` (green) | `soft-pending` (amber, not a RESET) | `hard-reject`.
+6. `notify.ts` Telegram outbox (only if secrets set) → persist store to KV (`persist.ts`).
 
 Global config is injected via `applyEnv` writing to `globalThis` (see `Env` in `index.ts`);
 `store.ts` is a module-level singleton persisted to KV. `pipeline/forecast.ts` computes the
@@ -67,7 +74,10 @@ baseline; never scrapes competitors, never notifies, never turns a card green).
 ### The false-green invariant (most important rule)
 A false green is the **highest-severity incident**. Guardrails, all enforced worker-side:
 - Both rules **and** LLM must clear a usage-phrase floor **+ scope** (all-users). Staff catchphrases
-  alone never go green. Teaser / "incoming" / negated sentences are rejected (see `fixtures/`).
+  alone never go green. Teaser / hedge-speculation / "incoming" / negated sentences are rejected
+  (shared helpers in `auto_publish.ts`; see `fixtures/` positives + negatives).
+- New strong templates must ship with **negative** fixtures (e.g. `No usage reset for paid…`,
+  `Considering a new usage reset…`) — substrings like `usage reset for paid` embed inside denials.
 - Fail-closed: a source past its freshness SLA shows **source unhealthy / unknown**, never "calm".
 - Green has a TTL (`display_until`, default ~24h). Green = "most recent confirmed event still inside
   its window", not a permanent state.
@@ -145,8 +155,9 @@ Flutter Web (CanvasKit) is invisible to crawlers and to AI answer engines
 - Product UI is fully localized (see above); source ARB copy and most docs are authored **繁中-first**.
 - Worker is ESM TypeScript with `.js` import specifiers (compiled by tsx/wrangler) — keep the `.js`
   suffix on relative imports even though the files are `.ts`.
-- `fixtures/` holds golden classification cases (positives + negatives like teaser/promo/affected-only);
-  tests assert these. When touching classification, add/adjust a fixture rather than loosening the floor.
+- `fixtures/` holds golden classification cases (positives + negatives: teaser / promo / affected-only /
+  negation / hedge). Tests assert these. When touching classification, add/adjust a fixture rather
+  than loosening the floor — new CODEX_STRONG phrases require a matching negative.
 - CI (`.github/workflows/ci.yml`) gates every push: worker `npm run typecheck` + `npm test`, Flutter
   `flutter analyze` + `flutter test`. Both must stay green.
 - `plans/` holds the `/improve` implementation plans (001–016, already landed); `docs/spikes/` holds

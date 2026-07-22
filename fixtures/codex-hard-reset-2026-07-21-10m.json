@@ -1,0 +1,13 @@
+{
+  "provider": "codex",
+  "url": "https://x.com/thsottiaux/status/2079609157934886975",
+  "author_handle": "thsottiaux",
+  "post_id": "2079609157934886975",
+  "announced_at": "2026-07-21T16:47:15.000Z",
+  "raw_text": "10M!\n\nNew day, new usage reset for paid users of Codex and ChatGPT Work. Lands in the next hour. Enjoy.",
+  "expected": {
+    "type": "hard_reset",
+    "scope": "all_paid",
+    "excluded": false
+  }
+}

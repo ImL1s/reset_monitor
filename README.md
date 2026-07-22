@@ -13,13 +13,15 @@
 | **Stats** | https://reset-radar.taiwan-traffic.workers.dev/v1/stats |
 | **Monitor** | https://reset-radar.taiwan-traffic.workers.dev/v1/monitor |
 
-## 現況（2026-07-21）
+## 現況（2026-07-22）
 
 | 能力 | 說明 |
 |------|------|
 | 全自動 | Cron `*/10` 拉 `@thsottiaux` / `@ClaudeDevs`（FxTwitter → Dayclaw fallback） |
 | 綠燈 | 嚴格模板 auto-confirm；失敗才 LLM（**Zen free → Go**）；**hard_reset only** 為 North-Star 綠 |
-| 假綠防護 | teaser / quote / RT / reply 不綠；usage 片語 floor + **收緊的 global scope**；口頭禪 alone 不綠；promote 用 **帖子時間** 算 TTL |
+| Codex 模板 | 含 `new usage reset` / `usage reset for paid`（2026-07-21 Tibo 10M 漏檢修復）；soft funnel ≥ CODEX_STRONG，**不**放裸 `usage reset` |
+| 假綠防護 | teaser / hedge / negation / quote / RT / reply 不綠；usage 片語 floor + **收緊的 global scope**；口頭禪 alone 不綠；promote 用 **帖子時間** 算 TTL |
+| 模板擴充後重開 | `excluded_context`（軟漏斗 miss）可在 classify 通過後 requeue；`negation` / teaser / quote 永不救回 |
 | Claude 臂 | soft classify → strong + floor + all-users scope；擋 API raise / promo / partial |
 | Banked | 可確認並顯示 `active_banked`（琥珀），**不**當「公開 RESET 進行中」綠燈 |
 | 歷史 / stats | corpus seed；`last_reset_at` / 間隔 / drought = **hard_reset only** |

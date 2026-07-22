@@ -1,0 +1,12 @@
+{
+  "provider": "codex",
+  "url": "https://x.com/thsottiaux/status/2090000000000000001",
+  "author_handle": "thsottiaux",
+  "post_id": "2090000000000000001",
+  "raw_text": "No usage reset for paid users of Codex and ChatGPT Work.",
+  "expected": {
+    "excluded": true,
+    "excludeReason": "negation",
+    "gate_reason": "negation"
+  }
+}

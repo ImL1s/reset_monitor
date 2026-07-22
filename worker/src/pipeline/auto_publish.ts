@@ -46,6 +46,10 @@ const CODEX_STRONG = [
   "into your bank",
   "added a banked reset",
   "another reset for our codex",
+  // 2026-07-21: "New day, new usage reset for paid users of Codex and ChatGPT Work"
+  // Keep scoped ("for paid"); bare "usage reset" alone is never strong.
+  "new usage reset",
+  "usage reset for paid",
   // Catchphrases: require floor+scope — alone cannot green
   "oops... i did it again",
   "oops… i did it again",
@@ -210,17 +214,54 @@ export function hasClaudeGlobalScopeSignal(text: string): boolean {
   );
 }
 
-function isQuestionTeaser(text: string): boolean {
+/** Question / "should we reset?" teasers — align with classifyCodexText. */
+export function isQuestionTeaser(text: string): boolean {
   return (
     /\?/.test(text) &&
-    /should we|shall we|maybe we|might we|do we reset/i.test(text)
+    /should we|shall we|maybe|might we|do we reset/i.test(text)
   );
 }
 
-function isNegation(text: string): boolean {
-  return /\bno reset\b|not reset|won't reset|will not reset|no hard reset/i.test(
-    text,
+/**
+ * Hard denials of a public reset. Must cover "no usage reset for paid…" —
+ * the 2026-07-21 template family embeds inside common denials.
+ */
+export function isNegation(text: string): boolean {
+  return (
+    /\bno\s+(?:hard\s+)?reset\b/i.test(text) ||
+    /\bno\s+usage\s+reset\b/i.test(text) ||
+    /\bno\s+rate\s*limit\s+reset\b/i.test(text) ||
+    /\bnot\s+reset\b/i.test(text) ||
+    /\bwon'?t\s+(?:do\s+)?(?:a\s+)?(?:usage\s+|rate\s*limit\s+)?reset\b/i.test(
+      text,
+    ) ||
+    /\bwill\s+not\s+(?:do\s+)?(?:a\s+)?(?:usage\s+|rate\s*limit\s+)?reset\b/i.test(
+      text,
+    ) ||
+    /\bnot\s+(?:do(?:ing)?\s+)?(?:a\s+)?usage\s+reset\b/i.test(text)
   );
+}
+
+/**
+ * Soft speculation without a staff announce marker (false-green P0 for
+ * "new usage reset" / "usage reset for paid" templates).
+ */
+export function isHedgeSpeculation(text: string): boolean {
+  const hedge =
+    /\b(considering|looking at|thinking about|wondering(?: about)?)\b.{0,100}\b(usage reset|reset usage|usage limits?|rate limits?)\b/i.test(
+      text,
+    ) ||
+    /\b(maybe|might)\b.{0,80}\b(usage reset|reset usage)\b/i.test(text);
+  if (!hedge) return false;
+  // Staff announce markers override (true hard posts often say Enjoy / Lands in)
+  if (
+    /\b(new day|enjoy|lands in|propagating|i did it again|we are (?:once again )?resetting|we're resetting|have reset|has reset|oops)\b/i.test(
+      text,
+    )
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export function hasUsagePhraseFloor(text: string): boolean {
@@ -281,6 +322,9 @@ export function shouldAutoPublish(cand: EventCandidate): AutoGateResult {
   }
   if (isNegation(text)) {
     return { ok: false, reason: "negation" };
+  }
+  if (isHedgeSpeculation(text)) {
+    return { ok: false, reason: "hedge_speculation" };
   }
   if (isScheduledIncomingOnly(text)) {
     return { ok: false, reason: "scheduled_incoming" };

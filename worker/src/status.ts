@@ -14,6 +14,11 @@ import {
   computeNext48hForecast,
   detectExplicitFuturePromise,
 } from "./pipeline/forecast.js";
+import {
+  isHedgeSpeculation,
+  isNegation,
+  isQuestionTeaser,
+} from "./pipeline/auto_publish.js";
 
 export function nowIso(now: Date = new Date()): string {
   return now.toISOString();
@@ -326,6 +331,9 @@ export function classifyCodexText(text: string): {
     "sneaky double reset",
     "reset button pressed",
     "usage reset on the house",
+    // 2026-07-21 Tibo 10M — match CODEX_STRONG; no bare "usage reset" (LLM surface)
+    "new usage reset",
+    "usage reset for paid",
     "into the reset bank",
     "into your bank",
     "credit one additional reset",
@@ -345,8 +353,8 @@ export function classifyCodexText(text: string): {
   ];
   const hits = phrases.filter((p) => lower.includes(p));
 
-  // crude exclusions
-  if (/\?/.test(text) && /should we|shall we|maybe/i.test(text)) {
+  // crude exclusions — shared with shouldAutoPublish (false-green P0)
+  if (isQuestionTeaser(text)) {
     return {
       hits,
       type: "hard_reset",
@@ -355,13 +363,22 @@ export function classifyCodexText(text: string): {
       excludeReason: "question_teaser",
     };
   }
-  if (/\bno reset\b|not reset|won't reset|will not reset/i.test(text)) {
+  if (isNegation(text)) {
     return {
       hits,
       type: "hard_reset",
       scope: "unknown",
       excluded: true,
       excludeReason: "negation",
+    };
+  }
+  if (isHedgeSpeculation(text)) {
+    return {
+      hits,
+      type: "hard_reset",
+      scope: "unknown",
+      excluded: true,
+      excludeReason: "hedge_speculation",
     };
   }
 

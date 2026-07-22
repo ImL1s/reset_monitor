@@ -144,6 +144,7 @@ async function tryPromoteCandidate(
     "partial_or_promo",
     "question_teaser",
     "negation",
+    "hedge_speculation",
     "scheduled_incoming",
   ]);
 
@@ -329,7 +330,9 @@ export async function runAutoCycle(
             ar.duplicates += 1;
             // Re-open soft rejects so recovered infra can green true positives
             if (cand.status === "rejected") {
-              const reopened = store.requeueSoftRejected(cand.id);
+              const reopened =
+                store.requeueSoftRejected(cand.id) ??
+                store.requeueExcludedIfClassifyPasses(cand.id);
               if (reopened) cand = reopened;
               else continue;
             } else if (cand.status === "pending_review") {

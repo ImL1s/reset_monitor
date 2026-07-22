@@ -74,6 +74,27 @@ describe("shouldAutoPublish fixtures", () => {
     assert.equal(r.reason, "partial_or_promo");
   });
 
+  it("PROMOTE codex 10M new usage reset (2026-07-21)", () => {
+    const f = loadFixture("codex-hard-reset-2026-07-21-10m.json");
+    const r = shouldAutoPublish(candFromFixture(f));
+    assert.equal(r.ok, true);
+    assert.equal(r.type, "hard_reset");
+  });
+
+  it("REJECT no usage reset for paid (negation)", () => {
+    const f = loadFixture("codex-neg-no-usage-reset.json");
+    const r = shouldAutoPublish(candFromFixture(f));
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "negation");
+  });
+
+  it("REJECT considering new usage reset (hedge)", () => {
+    const f = loadFixture("codex-neg-considering-usage-reset.json");
+    const r = shouldAutoPublish(candFromFixture(f));
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, "hedge_speculation");
+  });
+
   it("REJECT teaser should-we-reset", () => {
     const f = loadFixture("codex-teaser-should-we-reset.json");
     const r = shouldAutoPublish(candFromFixture(f));
@@ -144,6 +165,76 @@ describe("MemoryStore auto path via ingest+gate", () => {
     });
     assert.equal(ev.decision_by, "auto_rules");
     assert.equal(ev.confidence, "confirmed");
+  });
+
+  it("ingest 10M usage-reset phrasing reaches gate (not excluded_context)", () => {
+    const s = new MemoryStore();
+    const f = loadFixture("codex-hard-reset-2026-07-21-10m.json");
+    const postId = f.post_id + "_auto_test_10m";
+    const r = s.ingest({
+      url: f.url.replace(f.post_id, postId),
+      provider: "codex",
+      raw_text: f.raw_text,
+      author_handle: f.author_handle,
+      post_id: postId,
+    });
+    assert.equal(r.candidate.status, "pending_review");
+    assert.ok(r.candidate.rule_hits.length > 0);
+    const gate = shouldAutoPublish(r.candidate);
+    assert.equal(gate.ok, true);
+    assert.equal(gate.type, "hard_reset");
+  });
+
+  it("requeueExcludedIfClassifyPasses reopens template-miss rejects", () => {
+    const s = new MemoryStore();
+    const f = loadFixture("codex-hard-reset-2026-07-21-10m.json");
+    const postId = f.post_id + "_requeue_excl";
+    // Simulate pre-fix store: force excluded_context reject
+    const r = s.ingest({
+      url: f.url.replace(f.post_id, postId),
+      provider: "codex",
+      raw_text: "Team is hard at work, no quota language here",
+      author_handle: f.author_handle,
+      post_id: postId,
+    });
+    assert.equal(r.candidate.status, "rejected");
+    assert.equal(r.candidate.reject_reason, "excluded_context");
+    // Rewrite text as if templates now cover the real announcement
+    r.candidate.raw_text = f.raw_text;
+    s.candidates.set(r.candidate.id, r.candidate);
+    const reopened = s.requeueExcludedIfClassifyPasses(r.candidate.id);
+    assert.ok(reopened);
+    assert.equal(reopened!.status, "pending_review");
+    assert.equal(shouldAutoPublish(reopened!).ok, true);
+  });
+
+  it("requeueExcludedIfClassifyPasses does not reopen negation", () => {
+    const s = new MemoryStore();
+    const f = loadFixture("codex-neg-no-usage-reset.json");
+    const postId = f.post_id + "_requeue_neg";
+    const r = s.ingest({
+      url: f.url.replace(f.post_id, postId),
+      provider: "codex",
+      raw_text: "Team chatter without quota language",
+      author_handle: f.author_handle,
+      post_id: postId,
+    });
+    assert.equal(r.candidate.reject_reason, "excluded_context");
+    r.candidate.raw_text = f.raw_text;
+    s.candidates.set(r.candidate.id, r.candidate);
+    // After template expand, classify excludes as negation — must stay dead
+    assert.equal(s.requeueExcludedIfClassifyPasses(r.candidate.id), null);
+  });
+
+  it("bare usage reset without for-paid does not rules-green", () => {
+    const r = shouldAutoPublish({
+      ...candFromFixture(loadFixture("codex-hard-reset-2026-07-21-10m.json")),
+      raw_text: "Looking at usage reset options for Codex users.",
+    });
+    assert.equal(r.ok, false);
+    assert.ok(
+      r.reason === "no_strong_template" || r.reason === "hedge_speculation",
+    );
   });
 });
 

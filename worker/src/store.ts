@@ -392,6 +392,32 @@ export class MemoryStore {
     return cand;
   }
 
+  /**
+   * Re-open ingest soft-funnel misses after template expansion.
+   * Only `excluded_context` (no phrase hits) — never quote/RT/reply/teaser/negation.
+   */
+  requeueExcludedIfClassifyPasses(
+    candidateId: string,
+  ): EventCandidate | null {
+    const cand = this.candidates.get(candidateId);
+    if (!cand || cand.status !== "rejected") return null;
+    if (cand.reject_reason !== "excluded_context") return null;
+    if (cand.is_quote || cand.is_reply || cand.is_retweet) return null;
+    const clf =
+      cand.provider === "claude"
+        ? classifyClaudeText(cand.raw_text)
+        : classifyCodexText(cand.raw_text);
+    if (clf.excluded) return null;
+    cand.status = "pending_review";
+    cand.reject_reason = null;
+    cand.rule_hits = clf.hits;
+    cand.suggested_type = clf.type;
+    cand.suggested_scope = clf.scope;
+    cand.updated_at = nowIso();
+    this.candidates.set(cand.id, cand);
+    return cand;
+  }
+
   findCandidateByPostId(postId: string): EventCandidate | null {
     for (const c of this.candidates.values()) {
       if (c.post_id === postId) return c;
